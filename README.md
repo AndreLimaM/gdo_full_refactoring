@@ -1,13 +1,15 @@
-# Windsurf GCS Connector para repo-dev-gdo-carga/datalake
+# Sistema de Processamento de Dados GDO
 
-Este projeto fornece uma interface para conectar o Windsurf diretamente com o bucket `repo-dev-gdo-carga` do Google Cloud Storage (GCS), especificamente para acessar e manipular dados no caminho `datalake`.
+Este projeto implementa um sistema completo para processamento dos payloads do GDO recebidos via arquivos JSON. O sistema processa esses dados e os persiste em um banco de dados Cloud SQL no Google Cloud Platform.
 
-O projeto utiliza um sistema de configuração centralizado baseado em YAML, facilitando a migração para outros ambientes ou buckets no futuro.
+O projeto utiliza um sistema de configuração centralizado baseado em YAML, facilitando a migração entre diferentes ambientes. Os conectores para GCS e Cloud SQL são componentes auxiliares que facilitam o desenvolvimento, mas o foco principal é o processamento dos dados do GDO.
 
 ## Requisitos
 
 - Python 3.10 ou superior
 - Credenciais do Google Cloud com acesso ao bucket `repo-dev-gdo-carga`
+- Acesso a uma instância Cloud SQL PostgreSQL
+- Permissões para acessar o Secret Manager (opcional, para gerenciamento seguro de credenciais)
 
 ## Instalação
 
@@ -132,33 +134,50 @@ print(df_lido.head())
 
 ## Estrutura do Projeto
 
-- `gcs_connector.py`: Classe base para conexão com o GCS
-- `datalake_operations.py`: Operações específicas para o datalake
-- `exemplo_acesso_datalake.py`: Exemplo simples de acesso ao datalake
+### Componentes Principais
+
+- `gdo_processor.py`: Módulo principal para processamento dos payloads do GDO (a ser implementado)
+- `db_connector.py`: Conector para o Cloud SQL para persistência dos dados processados
 - `config/config.yaml`: Arquivo de configuração centralizado
 - `config/config_manager.py`: Gerenciador de configurações
+
+### Conectores Auxiliares
+
+- `gcs_connector.py`: Conector para acesso ao Google Cloud Storage
+- `datalake_operations.py`: Operações para manipulação de dados no datalake
+
+### Utilitários e Exemplos
+
+- `exemplo_acesso_datalake.py`: Exemplo de acesso ao datalake
+- `listar_datalake.py`: Utilitário para listar conteúdo do datalake
 - `requirements.txt`: Dependências do projeto
-- `.env`: Configurações de ambiente (alternativa, não versionado)
 - `.env.example`: Exemplo de configurações de ambiente
 
 ## Funcionalidades
 
-### Operações Básicas do GCS
+### Processamento de Dados GDO
 
-- Upload e download de arquivos
-- Listagem de arquivos e diretórios
-- Verificação de existência de arquivos
-- Obtenção de metadados
-- Geração de URLs assinadas
-- Criação de diretórios
+- Leitura de payloads JSON do bucket GCS
+- Validação de schema dos payloads
+- Processamento e transformação de dados
+- Persistência em banco de dados Cloud SQL
+- Monitoramento e registro de erros
+- Processamento em lote para alta performance
 
-### Operações Específicas do Datalake
+### Operações de Banco de Dados
 
-- Criação e gerenciamento de datasets
-- Criação e listagem de partições
+- Conexão segura com Cloud SQL PostgreSQL
+- Gerenciamento de pool de conexões
+- Execução de consultas e transações
+- Criação e gerenciamento de tabelas
+- Integração com Secret Manager para credenciais seguras
+
+### Conectores Auxiliares
+
+- Upload e download de arquivos do GCS
+- Listagem e manipulação de dados no datalake
 - Leitura e escrita de dados em diversos formatos (CSV, Parquet, JSON)
-- Busca de arquivos por padrão
-- Gerenciamento de metadados
+- Gerenciamento de configurações centralizadas
 
 ## Obtendo Credenciais do Google Cloud
 
