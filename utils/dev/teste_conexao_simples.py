@@ -21,7 +21,27 @@ logging.basicConfig(
 logger = logging.getLogger('teste-conexao-simples')
 
 # String de conexu00e3o direta
-CONNECTION_STRING = "postgresql://db_eco_tcbf_25_user:5HN33PHKjXcLTz3tBC@34.48.11.43:5432/db_eco_tcbf_25"
+import os
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente
+load_dotenv()
+
+# Construir string de conexão a partir de variáveis de ambiente
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST')
+DB_PORT = os.getenv('DB_PORT', '5432')
+DB_NAME = os.getenv('DB_NAME')
+DB_DRIVER = os.getenv('DB_DRIVER', 'postgresql')
+
+CONNECTION_STRING = f"{DB_DRIVER}://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+# Para debug (remover em produção)
+# Não exibe a senha real, apenas um placeholder
+debug_conn_string = f"{DB_DRIVER}://{DB_USER}:***@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+print(f"Conectando ao banco de dados: {debug_conn_string}")
+
 
 
 def testar_conexao():

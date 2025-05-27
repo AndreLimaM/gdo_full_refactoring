@@ -60,14 +60,14 @@ cloudsql:
   
   # Configurações de instância
   instance:
-    host: "34.48.11.43"
-    port: 5432
+    host: ${DB_HOST}
+    port: ${DB_PORT}
   
   # Configurações de conexão
   connection:
-    database: "db_eco_tcbf_25"
-    user: "db_eco_tcbf_25_user"
-    password: "5HN33PHKjXcLTz3tBC"
+    database: ${DB_NAME}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
     use_proxy: false
     use_ssl: true
   
