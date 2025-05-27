@@ -1,0 +1,114 @@
+# Configurau00e7u00f5es do Sistema de Processamento de Dados GDO
+# Versu00e3o: 1.0.0
+# Data: 27/05/2025
+
+# Configurau00e7u00f5es do Google Cloud Storage
+gcs:
+  # Nome do bucket principal
+  bucket_name: "repo-dev-gdo-carga"
+  
+  # Caminho para o arquivo de credenciais
+  credentials_path: "./credentials.json"
+  
+  # Prefixos de caminhos no bucket
+  paths:
+    # Caminho base para o datalake
+    datalake: "datalake/"
+    
+    # Outros caminhos importantes (podem ser adicionados conforme necessu00e1rio)
+    temp: "datalake/temp/"
+    logs: "datalake/logs/"
+    metadata: "datalake/metadata/"
+
+# Configurau00e7u00f5es de datasets padru00e3o
+datasets:
+  # Estrutura de pastas para novos datasets
+  structure:
+    - "raw/"      # Dados brutos
+    - "processed/" # Dados processados
+    - "final/"    # Dados finalizados
+  
+  # Formato padru00e3o para novos arquivos
+  default_format: "parquet"
+  
+  # Configurau00e7u00f5es de partiu00e7u00f5es
+  partitions:
+    # Esquema de partiu00e7u00e3o padru00e3o (ano/mu00eas/dia)
+    default_scheme: "ano={year}/mes={month}/dia={day}"
+
+# Configurau00e7u00f5es de logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Configurau00e7u00f5es de cache
+cache:
+  enabled: true
+  max_size_mb: 100
+  ttl_seconds: 3600  # 1 hora
+
+# Configurau00e7u00f5es de conexu00e3o
+connection:
+  timeout_seconds: 30
+  max_retries: 3
+  retry_delay_seconds: 2
+
+# Configurau00e7u00f5es do Cloud SQL
+cloudsql:
+  # Tipo de banco de dados (postgresql, mysql)
+  db_type: "postgresql"
+  
+  # Configurau00e7u00f5es de instau00e2ncia
+  instance:
+    project_id: "development-439017"
+    region: "us-central1"
+    instance_name: "gdo-database"
+  
+  # Configurau00e7u00f5es de conexu00e3o
+  connection:
+    database: "gdo_data"
+    user: "gdo_user"
+    password_secret: "gdo-db-password"  # Nome do segredo no Secret Manager
+    use_proxy: true
+    socket_path: "/cloudsql/development-439017:us-central1:gdo-database"
+  
+  # Configurau00e7u00f5es de pool de conexu00f5es
+  pool:
+    pool_size: 5
+    max_overflow: 10
+    pool_timeout: 30
+    pool_recycle: 1800  # 30 minutos
+
+# Configurau00e7u00f5es do processamento GDO
+gdo:
+  # Configurau00e7u00f5es de processamento
+  processing:
+    # Nu00famero de workers paralelos
+    workers: 4
+    # Tamanho do lote para processamento em batch
+    batch_size: 100
+    # Timeout para processamento de um arquivo (segundos)
+    timeout: 300
+  
+  # Configurau00e7u00f5es de monitoramento
+  monitoring:
+    enabled: true
+    log_level: "INFO"
+    metrics_enabled: true
+  
+  # Estrutura de tabelas no banco de dados
+  tables:
+    # Tabela principal de payloads
+    payloads: "gdo_payloads"
+    # Tabela de metadados de processamento
+    metadata: "gdo_metadata"
+    # Tabela de erros de processamento
+    errors: "gdo_errors"
+    # Tabela de logs de processamento
+    logs: "gdo_logs"
+  
+  # Configurau00e7u00f5es de validau00e7u00e3o de schema
+  validation:
+    enabled: true
+    schema_path: "schemas/"
+    strict_mode: false  # Se true, rejeita payloads que nu00e3o correspondem ao schema

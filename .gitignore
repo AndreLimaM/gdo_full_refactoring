@@ -1,0 +1,33 @@
+# Credenciais e configurau00e7u00f5es
+credentials.json
+.env
+
+# Arquivos Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ambientes virtuais
+venv/
+env/
+.venv/
+.env/
+
+# Arquivos de IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Arquivos temporu00e1rios
+*.log
+*.tmp
+.DS_Store
+
+# Arquivos de distribuiu00e7u00e3o
+dist/
+build/
+*.egg-info/
