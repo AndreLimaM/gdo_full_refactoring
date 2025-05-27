@@ -120,14 +120,14 @@ class CloudSQLConnector:
 
     def _load_config(self, db_type: Optional[str], connection_params: Optional[Dict[str, Any]]) -> None:
         """
-        Carrega as configurau00e7u00f5es de conexu00e3o com o banco de dados.
+        Carrega as configurações de conexão com o banco de dados.
         
         Args:
             db_type (Optional[str]): Tipo de banco de dados.
-            connection_params (Optional[Dict[str, Any]]): Paru00e2metros de conexu00e3o personalizados.
+            connection_params (Optional[Dict[str, Any]]): Parâmetros de conexão personalizados.
         
         Raises:
-            ValueError: Se o tipo de banco de dados nu00e3o for suportado.
+            ValueError: Se o tipo de banco de dados não for suportado.
         """
         # Definir tipo de banco de dados
         if db_type:
@@ -139,53 +139,87 @@ class CloudSQLConnector:
         
         # Validar tipo de banco de dados
         if self.db_type not in ['postgresql', 'mysql']:
-            raise ValueError(f"Tipo de banco de dados nu00e3o suportado: {self.db_type}. Use 'postgresql' ou 'mysql'.")
+            raise ValueError(f"Tipo de banco de dados não suportado: {self.db_type}. Use 'postgresql' ou 'mysql'.")
         
-        # Obter paru00e2metros de conexu00e3o
+        # Obter parâmetros de conexão
         if connection_params:
-            # Usar paru00e2metros fornecidos
+            # Usar parâmetros fornecidos
             self.connection_params = connection_params
         elif USE_CONFIG_FILE:
-            # Usar configurau00e7u00f5es do arquivo
-            self.project_id = config.get('cloudsql.instance.project_id')
-            self.region = config.get('cloudsql.instance.region')
-            self.instance_name = config.get('cloudsql.instance.instance_name')
-            self.database = config.get('cloudsql.connection.database')
-            self.user = config.get('cloudsql.connection.user')
-            self.password_secret = config.get('cloudsql.connection.password_secret')
-            self.use_proxy = config.get('cloudsql.connection.use_proxy', True)
-            self.socket_path = config.get('cloudsql.connection.socket_path')
-            
-            # Configurau00e7u00f5es de pool
-            self.pool_size = config.get('cloudsql.pool.pool_size', 5)
-            self.max_overflow = config.get('cloudsql.pool.max_overflow', 10)
-            self.pool_timeout = config.get('cloudsql.pool.pool_timeout', 30)
-            self.pool_recycle = config.get('cloudsql.pool.pool_recycle', 1800)
+            # Verificar se estamos usando o novo formato de configuração (host/port)
+            if config.get('cloudsql.instance.host'):
+                self.host = config.get('cloudsql.instance.host')
+                self.port = config.get('cloudsql.instance.port', 5432)
+                self.database = config.get('cloudsql.connection.database')
+                self.user = config.get('cloudsql.connection.user')
+                self.password = config.get('cloudsql.connection.password')
+                self.use_proxy = config.get('cloudsql.connection.use_proxy', False)
+                self.use_ssl = config.get('cloudsql.connection.use_ssl', True)
+                # Configurações de pool
+                self.pool_size = config.get('cloudsql.pool.pool_size', 5)
+                self.max_overflow = config.get('cloudsql.pool.max_overflow', 10)
+                self.pool_timeout = config.get('cloudsql.pool.pool_timeout', 30)
+                self.pool_recycle = config.get('cloudsql.pool.pool_recycle', 1800)
+                # Não precisamos do instance_connection_name no novo formato
+                self.instance_connection_name = None
+            else:
+                # Formato antigo (project_id/region/instance_name)
+                self.project_id = config.get('cloudsql.instance.project_id')
+                self.region = config.get('cloudsql.instance.region')
+                self.instance_name = config.get('cloudsql.instance.instance_name')
+                self.database = config.get('cloudsql.connection.database')
+                self.user = config.get('cloudsql.connection.user')
+                self.password_secret = config.get('cloudsql.connection.password_secret')
+                self.use_proxy = config.get('cloudsql.connection.use_proxy', True)
+                self.socket_path = config.get('cloudsql.connection.socket_path')
+                # Configurações de pool
+                self.pool_size = config.get('cloudsql.pool.pool_size', 5)
+                self.max_overflow = config.get('cloudsql.pool.max_overflow', 10)
+                self.pool_timeout = config.get('cloudsql.pool.pool_timeout', 30)
+                self.pool_recycle = config.get('cloudsql.pool.pool_recycle', 1800)
+                # Construir nome de conexão da instância
+                self.instance_connection_name = f"{self.project_id}:{self.region}:{self.instance_name}"
+                # Obter senha do Secret Manager se necessário
+                if self.password_secret and HAS_SECRET_MANAGER:
+                    self.password = self._get_secret(self.project_id, self.password_secret)
+                else:
+                    self.password = os.getenv('DB_PASSWORD', '')
         else:
-            # Usar variu00e1veis de ambiente
-            self.project_id = os.getenv('DB_PROJECT_ID')
-            self.region = os.getenv('DB_REGION')
-            self.instance_name = os.getenv('DB_INSTANCE_NAME')
-            self.database = os.getenv('DB_NAME')
-            self.user = os.getenv('DB_USER')
-            self.password_secret = os.getenv('DB_PASSWORD_SECRET')
-            self.use_proxy = os.getenv('DB_USE_PROXY', 'true').lower() == 'true'
-            self.socket_path = os.getenv('DB_SOCKET_PATH')
+            # Usar variáveis de ambiente
+            # Verificar se estamos usando o novo formato de configuração (host/port)
+            if os.getenv('DB_HOST'):
+                self.host = os.getenv('DB_HOST')
+                self.port = int(os.getenv('DB_PORT', '5432'))
+                self.database = os.getenv('DB_NAME')
+                self.user = os.getenv('DB_USER')
+                self.password = os.getenv('DB_PASSWORD', '')
+                self.use_proxy = os.getenv('DB_USE_PROXY', 'false').lower() == 'true'
+                self.use_ssl = os.getenv('DB_USE_SSL', 'true').lower() == 'true'
+                # Não precisamos do instance_connection_name no novo formato
+                self.instance_connection_name = None
+            else:
+                # Formato antigo (project_id/region/instance_name)
+                self.project_id = os.getenv('DB_PROJECT_ID')
+                self.region = os.getenv('DB_REGION')
+                self.instance_name = os.getenv('DB_INSTANCE_NAME')
+                self.database = os.getenv('DB_NAME')
+                self.user = os.getenv('DB_USER')
+                self.password_secret = os.getenv('DB_PASSWORD_SECRET')
+                self.use_proxy = os.getenv('DB_USE_PROXY', 'true').lower() == 'true'
+                self.socket_path = os.getenv('DB_SOCKET_PATH')
+                # Construir nome de conexão da instância
+                self.instance_connection_name = f"{self.project_id}:{self.region}:{self.instance_name}"
+                # Obter senha do Secret Manager se necessário
+                if self.password_secret and HAS_SECRET_MANAGER:
+                    self.password = self._get_secret(self.project_id, self.password_secret)
+                else:
+                    self.password = os.getenv('DB_PASSWORD', '')
             
-            # Configurau00e7u00f5es de pool
+            # Configurações de pool
             self.pool_size = int(os.getenv('DB_POOL_SIZE', '5'))
             self.max_overflow = int(os.getenv('DB_MAX_OVERFLOW', '10'))
             self.pool_timeout = int(os.getenv('DB_POOL_TIMEOUT', '30'))
             self.pool_recycle = int(os.getenv('DB_POOL_RECYCLE', '1800'))
-        
-        # Construir nome de conexu00e3o da instu00e2ncia
-        self.instance_connection_name = f"{self.project_id}:{self.region}:{self.instance_name}"
-        
-        # Obter senha do Secret Manager se necessu00e1rio
-        if self.password_secret and HAS_SECRET_MANAGER:
-            self.password = self._get_secret(self.project_id, self.password_secret)
-        else:
-            self.password = os.getenv('DB_PASSWORD', '')
 
     def _get_secret(self, project_id: str, secret_name: str) -> str:
         """
@@ -212,27 +246,39 @@ class CloudSQLConnector:
 
     def _create_engine(self) -> None:
         """
-        Cria o engine do SQLAlchemy para conexu00e3o com o banco de dados.
+        Cria o engine do SQLAlchemy para conexão com o banco de dados.
         
         Raises:
             RuntimeError: Se ocorrer um erro ao criar o engine.
         """
         try:
-            # Construir URL de conexu00e3o
+            # Construir URL de conexão
             if self.use_proxy:
-                # Conexu00e3o via socket Unix (Cloud SQL Proxy)
+                # Conexão via socket Unix (Cloud SQL Proxy)
                 if self.db_type == 'postgresql':
                     db_url = f"postgresql+psycopg2://{self.user}:{self.password}@/{self.database}?host={self.socket_path}"
                 else:  # MySQL
                     db_url = f"mysql+pymysql://{self.user}:{self.password}@/{self.database}?unix_socket={self.socket_path}"
             else:
-                # Conexu00e3o TCP/IP direta (nu00e3o recomendado para produu00e7u00e3o)
-                if self.db_type == 'postgresql':
-                    db_url = f"postgresql+psycopg2://{self.user}:{self.password}@{self.instance_connection_name}/{self.database}"
-                else:  # MySQL
-                    db_url = f"mysql+pymysql://{self.user}:{self.password}@{self.instance_connection_name}/{self.database}"
+                # Conexão TCP/IP direta
+                if hasattr(self, 'host') and hasattr(self, 'port'):
+                    # Usar host e porta diretamente (novo formato)
+                    if self.db_type == 'postgresql':
+                        db_url = f"postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+                        if hasattr(self, 'use_ssl') and self.use_ssl:
+                            db_url += "?sslmode=require"
+                    else:  # MySQL
+                        db_url = f"mysql+pymysql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+                        if hasattr(self, 'use_ssl') and self.use_ssl:
+                            db_url += "?ssl=true"
+                else:
+                    # Usar instance_connection_name (formato antigo)
+                    if self.db_type == 'postgresql':
+                        db_url = f"postgresql+psycopg2://{self.user}:{self.password}@{self.instance_connection_name}/{self.database}"
+                    else:  # MySQL
+                        db_url = f"mysql+pymysql://{self.user}:{self.password}@{self.instance_connection_name}/{self.database}"
             
-            # Criar engine com configurau00e7u00f5es de pool
+            # Criar engine com configurações de pool
             self.engine = create_engine(
                 db_url,
                 poolclass=QueuePool,
@@ -242,11 +288,11 @@ class CloudSQLConnector:
                 pool_recycle=self.pool_recycle
             )
             
-            # Testar conexu00e3o
+            # Testar conexão
             with self.engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
                 
-            logger.info("Conexu00e3o com o banco de dados estabelecida com sucesso")
+            logger.info("Conexão com o banco de dados estabelecida com sucesso")
             
         except Exception as e:
             error_msg = f"Erro ao criar engine do SQLAlchemy: {str(e)}"
@@ -301,17 +347,24 @@ class CloudSQLConnector:
         
         Args:
             query (str): Consulta SQL a ser executada.
-            params (Optional[Dict[str, Any]]): Paru00e2metros para a consulta.
+            params (Optional[Dict[str, Any]]): Parâmetros para a consulta.
             
         Returns:
-            List[Dict[str, Any]]: Lista de resultados como dicionu00e1rios.
+            List[Dict[str, Any]]: Lista de resultados como dicionários.
             
         Raises:
-            SQLAlchemyError: Se ocorrer um erro na execuu00e7u00e3o da consulta.
+            SQLAlchemyError: Se ocorrer um erro na execução da consulta.
         """
         with self.session_scope() as session:
-            result = session.execute(text(query), params or {})
-            return [dict(row) for row in result]
+            try:
+                result = session.execute(text(query), params or {})
+                # Obter nomes das colunas
+                columns = result.keys()
+                # Converter resultados em dicionários
+                return [dict(zip(columns, row)) for row in result.fetchall()]
+            except Exception as e:
+                logger.error(f"Erro ao executar consulta: {str(e)}")
+                raise
 
     def insert_data(self, table_name: str, data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> int:
         """

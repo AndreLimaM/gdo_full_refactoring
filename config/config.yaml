@@ -47,39 +47,38 @@ cache:
   max_size_mb: 100
   ttl_seconds: 3600  # 1 hora
 
-# Configurau00e7u00f5es de conexu00e3o
+# Configurações de conexão
 connection:
   timeout_seconds: 30
   max_retries: 3
   retry_delay_seconds: 2
 
-# Configurau00e7u00f5es do Cloud SQL
+# Configurações do Cloud SQL
 cloudsql:
   # Tipo de banco de dados (postgresql, mysql)
   db_type: "postgresql"
   
-  # Configurau00e7u00f5es de instau00e2ncia
+  # Configurações de instância
   instance:
-    project_id: "development-439017"
-    region: "us-central1"
-    instance_name: "gdo-database"
+    host: "34.48.11.43"
+    port: 5432
   
-  # Configurau00e7u00f5es de conexu00e3o
+  # Configurações de conexão
   connection:
-    database: "gdo_data"
-    user: "gdo_user"
-    password_secret: "gdo-db-password"  # Nome do segredo no Secret Manager
-    use_proxy: true
-    socket_path: "/cloudsql/development-439017:us-central1:gdo-database"
+    database: "db_eco_tcbf_25"
+    user: "db_eco_tcbf_25_user"
+    password: "5HN33PHKjXcLTz3tBC"
+    use_proxy: false
+    use_ssl: true
   
-  # Configurau00e7u00f5es de pool de conexu00f5es
+  # Configurações de pool de conexões
   pool:
     pool_size: 5
     max_overflow: 10
     pool_timeout: 30
     pool_recycle: 1800  # 30 minutos
 
-# Configurau00e7u00f5es do processamento GDO
+# Configurações do processamento GDO
 gdo:
   # Configurau00e7u00f5es de processamento
   processing:
