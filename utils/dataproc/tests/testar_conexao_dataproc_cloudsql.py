@@ -85,7 +85,7 @@ def criar_cluster_dataproc(
         "config": {
             "gce_cluster_config": {
                 "zone_uri": f"https://www.googleapis.com/compute/v1/projects/{project_id}/zones/{zone}",
-                "network_uri": f"https://www.googleapis.com/compute/v1/projects/{project_id}/global/networks/{network}",
+                # Usar apenas a sub-rede, que já implica a rede
                 "subnetwork_uri": f"https://www.googleapis.com/compute/v1/projects/{project_id}/regions/{region}/subnetworks/{subnetwork}",
                 "service_account_scopes": [
                     "https://www.googleapis.com/auth/cloud-platform"
@@ -128,16 +128,62 @@ def criar_cluster_dataproc(
     }
     
     # Cria o cluster
-    logger.info(f"Criando cluster Dataproc '{cluster_name}' na região {region}...")
-    operation = client.create_cluster(
-        request={"project_id": project_id, "region": region, "cluster": cluster_config}
-    )
+    try:
+        logger.info(f"Iniciando criação do cluster com rede {network} e sub-rede {subnetwork}...")
+        operation = client.create_cluster(
+            request={"project_id": project_id, "region": region, "cluster": cluster_config}
+        )
+
+        logger.info(f"Aguardando a criação do cluster (isso pode levar alguns minutos)...")
+        # Aumenta o tempo limite para 20 minutos (1200 segundos)
+        result = operation.result(timeout=1200)
+
+        logger.info(f"Cluster criado com sucesso: {cluster_name}")
+        logger.info(f"Aguardando 60 segundos para garantir que o cluster esteja pronto...")
+        time.sleep(60)  # Aguarda um minuto para garantir que o cluster esteja pronto
+    except Exception as e:
+        logger.error(f"Erro ao criar o cluster: {str(e)}")
+        # Verificar se o cluster foi parcialmente criado
+        try:
+            cluster_info = client.get_cluster(project_id=project_id, region=region, cluster_name=cluster_name)
+            logger.info(f"Status do cluster: {cluster_info.status.state}")
+        except Exception as get_error:
+            logger.error(f"Não foi possível obter informações do cluster: {str(get_error)}")
+        raise
     
-    logger.info("Aguardando a criação do cluster (isso pode levar alguns minutos)...")
-    result = operation.result()
-    
-    logger.info(f"Cluster criado com sucesso: {result.cluster_name}")
     return result
+
+
+def criar_script_inicializacao():
+    """
+    Cria um script de inicialização para instalar o driver PostgreSQL JDBC e o Cloud SQL Auth Proxy.
+    
+    Returns:
+        str: Conteúdo do script de inicialização
+    """
+    return """#!/bin/bash
+
+# Script de inicialização para instalar o driver PostgreSQL e o Cloud SQL Auth Proxy
+echo "Instalando componentes necessários..."
+
+# Instala o driver PostgreSQL
+apt-get update
+apt-get install -y postgresql-client
+
+# Baixa o driver JDBC do PostgreSQL
+wget https://jdbc.postgresql.org/download/postgresql-42.2.23.jar -P /usr/lib/spark/jars/
+
+# Instala o Cloud SQL Auth Proxy
+wget https://dl.google.com/cloudsql/cloud_sql_proxy_x64_linux -O cloud_sql_proxy
+chmod +x cloud_sql_proxy
+mv cloud_sql_proxy /usr/local/bin/
+
+# Cria diretório para sockets do Cloud SQL Proxy
+mkdir -p /var/run/cloudsql
+chmod 777 /var/run/cloudsql
+
+echo "Driver PostgreSQL e Cloud SQL Auth Proxy instalados com sucesso!"
+"""
 
 
 def fazer_upload_script_inicializacao(bucket_name: str) -> None:
@@ -147,21 +193,7 @@ def fazer_upload_script_inicializacao(bucket_name: str) -> None:
     Args:
         bucket_name: Nome do bucket GCS
     """
-    # Conteúdo do script de inicialização
-    script_content = """#!/bin/bash
-    
-# Script de inicialização para instalar o driver PostgreSQL no cluster Dataproc
-echo "Instalando driver PostgreSQL..."
-
-# Instala o driver PostgreSQL
-apt-get update
-apt-get install -y postgresql-client
-
-# Baixa o driver JDBC do PostgreSQL
-wget https://jdbc.postgresql.org/download/postgresql-42.2.23.jar -P /usr/lib/spark/jars/
-
-echo "Driver PostgreSQL instalado com sucesso!"
-"""
+    script_content = criar_script_inicializacao()
     
     # Inicializa o cliente de armazenamento
     storage_client = storage.Client()
@@ -186,93 +218,136 @@ def fazer_upload_job_teste(bucket_name: str) -> None:
     Args:
         bucket_name: Nome do bucket GCS
     """
-    # Conteúdo do script PySpark
-    script_content = f"""#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-\"\"\"
-Script PySpark para testar a conexão com o Cloud SQL e verificar a tabela bt_animais.
-\"\"\"
-
+    # Conteúdo do script PySpark - Versão ultra simplificada
+    script_content = """#!/usr/bin/env python3
 from pyspark.sql import SparkSession
 import sys
+import socket
+import subprocess
+import os
 
-# Inicializa a sessão Spark
-spark = SparkSession.builder \\
-    .appName("TesteConexaoCloudSQL") \\
-    .config("spark.jars", "/usr/lib/spark/jars/postgresql-42.2.23.jar") \\
+# Função para executar comandos do sistema
+def executar_comando(comando):
+    print(f"Executando comando: {comando}")
+    resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
+    print(f"Saída: {resultado.stdout}")
+    if resultado.stderr:
+        print(f"Erro: {resultado.stderr}")
+    return resultado
+
+# Verificar informações de rede
+print("=== Diagnóstico de Rede ===")
+executar_comando("hostname -I")  # Mostrar IPs do host
+executar_comando("ip route")    # Mostrar rotas
+
+# Testar conexão com o Cloud SQL
+print("=== Teste de Conexão com Cloud SQL ===")
+try:
+    # Testar conexão com IP público
+    print("Testando conexão com IP público (34.48.11.43:5432)...")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(5)
+    resultado = s.connect_ex(("34.48.11.43", 5432))
+    if resultado == 0:
+        print("Conexão bem-sucedida!")
+    else:
+        print(f"Falha na conexão. Código de erro: {resultado}")
+    s.close()
+    
+    # Testar conexão com IP privado
+    print("Testando conexão com IP privado (10.98.169.3:5432)...")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(5)
+    resultado = s.connect_ex(("10.98.169.3", 5432))
+    if resultado == 0:
+        print("Conexão bem-sucedida!")
+    else:
+        print(f"Falha na conexão. Código de erro: {resultado}")
+    s.close()
+except Exception as e:
+    print(f"Erro ao testar conexão: {e}")
+
+# Inicia a sessão Spark
+print("=== Iniciando Sessão Spark ===")
+spark = SparkSession.builder \
+    .appName("TesteConexaoCloudSQL") \
+    .config("spark.jars", "/usr/lib/spark/jars/postgresql-42.2.23.jar") \
     .getOrCreate()
 
-# Parâmetros de conexão com o banco de dados
-db_host = "{DB_HOST}"
-db_name = "{DB_NAME}"
-db_user = "{DB_USER}"
-db_password = "{DB_PASSWORD}"
-db_url = f"jdbc:postgresql://{{db_host}}/{{db_name}}"
-db_properties = {{
-    "user": db_user,
-    "password": db_password,
-    "driver": "org.postgresql.Driver"
-}}
+# Configurações de conexão com o banco de dados
+# Usando o IP público do Cloud SQL
+db_host = "34.48.11.43"  # IP público do Cloud SQL
+db_name = "db_eco_tcbf_25"
+db_user = "db_eco_tcbf_25_user"
+db_password = "5HN33PHKjXcLTz3tBC"
+db_url = "jdbc:postgresql://" + db_host + ":5432/" + db_name
 
 try:
-    # Tenta conectar ao banco de dados e ler a tabela bt_animais
     print("Tentando conectar ao Cloud SQL...")
     
-    # Executa uma consulta simples para verificar a conexão
-    df_test = spark.read \\
-        .format("jdbc") \\
-        .option("url", db_url) \\
-        .option("dbtable", "(SELECT 1 as teste) AS test") \\
-        .option("user", db_user) \\
-        .option("password", db_password) \\
-        .option("driver", "org.postgresql.Driver") \\
+    # Primeiro tenta uma consulta simples para verificar a conexão
+    test_df = spark.read \
+        .format("jdbc") \
+        .option("driver", "org.postgresql.Driver") \
+        .option("url", db_url) \
+        .option("dbtable", "(SELECT 1 as teste) AS test") \
+        .option("user", db_user) \
+        .option("password", db_password) \
         .load()
     
-    print("Conexão com o Cloud SQL estabelecida com sucesso!")
-    df_test.show()
+    print("Conexão básica com o Cloud SQL estabelecida com sucesso!")
+    test_df.show()
     
     # Verifica se a tabela bt_animais existe
-    print("Verificando a tabela bt_animais...")
+    print("Verificando tabela bt_animais...")
     
-    # Consulta para verificar a estrutura da tabela bt_animais
-    df_schema = spark.read \\
-        .format("jdbc") \\
-        .option("url", db_url) \\
-        .option("dbtable", "information_schema.columns") \\
-        .option("user", db_user) \\
-        .option("password", db_password) \\
-        .option("driver", "org.postgresql.Driver") \\
-        .load() \\
-        .filter("table_name = 'bt_animais'")
-    
-    # Verifica se a tabela existe
-    if df_schema.count() > 0:
-        print("Tabela bt_animais encontrada!")
-        print("Colunas da tabela bt_animais:")
-        df_schema.select("column_name", "data_type").show(100, truncate=False)
-        
-        # Conta o número de registros na tabela bt_animais
-        df_count = spark.read \\
-            .format("jdbc") \\
-            .option("url", db_url) \\
-            .option("dbtable", "(SELECT COUNT(*) as total FROM bt_animais) AS count") \\
-            .option("user", db_user) \\
-            .option("password", db_password) \\
-            .option("driver", "org.postgresql.Driver") \\
+    try:
+        # Tenta carregar dados da tabela bt_animais
+        df = spark.read \
+            .format("jdbc") \
+            .option("driver", "org.postgresql.Driver") \
+            .option("url", db_url) \
+            .option("dbtable", "bt_animais") \
+            .option("user", db_user) \
+            .option("password", db_password) \
             .load()
         
-        print("Número de registros na tabela bt_animais:")
-        df_count.show()
-    else:
-        print("Tabela bt_animais não encontrada!")
-    
+        # Exibe a estrutura da tabela
+        print("Estrutura da tabela bt_animais:")
+        df.printSchema()
+        
+        # Conta o número de registros
+        count = df.count()
+        print("Número de registros na tabela: " + str(count))
+        
+        # Exibe alguns registros
+        print("Exemplos de registros:")
+        df.show(5, truncate=False)
+        
+        print("Tabela bt_animais acessada com sucesso!")
+    except Exception as table_error:
+        print("Erro ao acessar a tabela bt_animais: " + str(table_error))
+        
+        # Lista as tabelas disponíveis
+        print("Listando tabelas disponíveis no banco de dados:")
+        tables_df = spark.read \
+            .format("jdbc") \
+            .option("driver", "org.postgresql.Driver") \
+            .option("url", db_url) \
+            .option("dbtable", "(SELECT table_name FROM information_schema.tables WHERE table_schema = 'public') AS tables") \
+            .option("user", db_user) \
+            .option("password", db_password) \
+            .load()
+        
+        tables_df.show(100, truncate=False)
+        
 except Exception as e:
-    print(f"Erro ao conectar ao Cloud SQL: {{str(e)}}")
+    print("Erro ao conectar ao Cloud SQL: " + str(e))
     sys.exit(1)
 
-print("Teste de conexão concluído com sucesso!")
+# Encerra a sessão Spark
 spark.stop()
+sys.exit(0)
 """
     
     # Inicializa o cliente de armazenamento
