@@ -244,6 +244,7 @@ Para mais informações sobre a implementação, consulte:
 - [Conexão entre Dataproc e Cloud SQL](./utils/dataproc/docs/CONEXAO_DATAPROC_CLOUDSQL.md)
 - [Processamento de JSONs e Gravação no SQL](./utils/dataproc/docs/PROCESSAMENTO_JSON_PARA_SQL.md)
 - [Processamento de Dados de Animais](./utils/dataproc/docs/PROCESSAMENTO_ANIMAIS.md)
+- [Processamento com Mapeamento de Campos](./utils/dataproc/docs/PROCESSAMENTO_MAPEAMENTO_JSON.md)
 - [Testes Unitários](./utils/dataproc/docs/TESTES_UNITARIOS.md)
 
 ## Próximos Passos
