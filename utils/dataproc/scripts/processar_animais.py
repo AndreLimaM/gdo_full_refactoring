@@ -52,36 +52,56 @@ def criar_spark_session():
     
     return spark
 
-def definir_schema_dados_adicionais():
+def definir_schema_motivos_dif():
     """
-    Define o schema para os dados adicionais do animal.
+    Define o schema para os motivos diferenciados.
     """
-    return StructType([
-        StructField("vacinado", BooleanType(), True),
-        StructField("vacinas", ArrayType(
-            StructType([
-                StructField("tipo", StringType(), True),
-                StructField("data", StringType(), True)
-            ])
-        ), True),
-        StructField("observacoes", StringType(), True)
-    ])
+    return ArrayType(
+        StructType([
+            StructField("id", IntegerType(), True),
+            StructField("descricao", StringType(), True)
+        ])
+    )
 
 def definir_schema_animal():
     """
     Define o schema para os dados de animais nos arquivos JSON.
     """
     return StructType([
-        StructField("id_animal", StringType(), True),
-        StructField("data_nascimento", StringType(), True),
-        StructField("id_propriedade", StringType(), True),
+        StructField("cod_empresa", IntegerType(), True),
+        StructField("cnpj_industria_abate", StringType(), True),
+        StructField("tipo_unidade_abate", StringType(), True),
+        StructField("nr_unidade_abate", StringType(), True),
+        StructField("nr_op", StringType(), True),
+        StructField("prod_cpf_cnpj", StringType(), True),
+        StructField("dt_compra", StringType(), True),
+        StructField("dt_abate", StringType(), True),
+        StructField("flag_contusao", StringType(), True),
+        StructField("id_destino_abate", IntegerType(), True),
+        StructField("motivos_dif", definir_schema_motivos_dif(), True),
+        StructField("nr_sisbov", StringType(), True),
+        StructField("sku_codigo", IntegerType(), True),
+        StructField("sku_descricao", StringType(), True),
+        StructField("nr_sequencial", IntegerType(), True),
+        StructField("nr_banda", IntegerType(), True),
         StructField("sexo", StringType(), True),
-        StructField("raca", StringType(), True),
-        StructField("peso_nascimento", DoubleType(), True),
-        StructField("data_entrada", StringType(), True),
-        StructField("data_saida", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("dados_adicionais", definir_schema_dados_adicionais(), True)
+        StructField("nr_chip", StringType(), True),
+        StructField("peso_vivo", DoubleType(), True),
+        StructField("peso_carcaca", DoubleType(), True),
+        StructField("hr_ultima_pesagem", StringType(), True),
+        StructField("id_acabamento", IntegerType(), True),
+        StructField("id_conformacao", IntegerType(), True),
+        StructField("id_habilitacao_mercado_escala", IntegerType(), True),
+        StructField("id_habilitacao_mercado_etiqueta", IntegerType(), True),
+        StructField("id_categoria", IntegerType(), True),
+        StructField("id_maturidade", IntegerType(), True),
+        StructField("id_raca", IntegerType(), True),
+        StructField("dt_fechamento_camera_abate", StringType(), True),
+        StructField("dt_abertura_camera_abate", StringType(), True),
+        StructField("dt_corte_quarto", StringType(), True),
+        StructField("valor_ph", DoubleType(), True),
+        StructField("cod_barra_abate", StringType(), True),
+        StructField("lote_abate", IntegerType(), True)
     ])
 
 def ler_arquivos_json(spark, input_path, schema):
@@ -115,23 +135,32 @@ def processar_dados(df):
     try:
         # 1. Remover registros com campos obrigatórios nulos
         df_processado = df.filter(
-            col("id_animal").isNotNull() & 
-            col("id_propriedade").isNotNull()
+            col("nr_sequencial").isNotNull() & 
+            col("cnpj_industria_abate").isNotNull()
         )
         
         # 2. Converter campos de data para timestamp
         df_processado = df_processado \
-            .withColumn("data_nascimento", to_timestamp(col("data_nascimento"), "yyyy-MM-dd")) \
-            .withColumn("data_entrada", to_timestamp(col("data_entrada"), "yyyy-MM-dd")) \
-            .withColumn("data_saida", to_timestamp(col("data_saida"), "yyyy-MM-dd"))
+            .withColumn("dt_compra", to_timestamp(col("dt_compra"), "yyyy-MM-dd")) \
+            .withColumn("dt_abate", to_timestamp(col("dt_abate"), "yyyy-MM-dd")) \
+            .withColumn("dt_fechamento_camera_abate", to_timestamp(col("dt_fechamento_camera_abate"), "yyyy-MM-dd")) \
+            .withColumn("dt_abertura_camera_abate", to_timestamp(col("dt_abertura_camera_abate"), "yyyy-MM-dd")) \
+            .withColumn("hr_ultima_pesagem", to_timestamp(col("hr_ultima_pesagem"), "yyyy-MM-dd'T'HH:mm:ss")) \
+            .withColumn("dt_corte_quarto", to_timestamp(col("dt_corte_quarto"), "yyyy-MM-dd'T'HH:mm:ss.SSS"))
         
         # 3. Adicionar campo de processamento
         df_processado = df_processado.withColumn("data_processamento", current_timestamp())
         
-        # 4. Extrair informações de vacinas para uma coluna separada
+        # 4. Converter flag_contusao para booleano
         df_processado = df_processado.withColumn(
-            "vacinas_info", 
-            col("dados_adicionais.vacinas").cast("string")
+            "flag_contusao", 
+            when(col("flag_contusao") == "True", lit(True)).otherwise(lit(False))
+        )
+        
+        # 5. Extrair informações de motivos_dif para uma coluna separada
+        df_processado = df_processado.withColumn(
+            "motivos_dif_info", 
+            col("motivos_dif").cast("string")
         )
         
         # Contar registros após processamento
@@ -147,24 +176,47 @@ def criar_tabela_animais(spark, db_properties):
     """
     Cria a tabela de animais no Cloud SQL se ela não existir.
     """
-    logger.info("Verificando/criando tabela de animais...")
+    logger.info("Verificando/criando tabela bt_animais...")
     
     try:
         # SQL para criar a tabela
         create_table_sql = """
-        CREATE TABLE IF NOT EXISTS animais (
+        CREATE TABLE IF NOT EXISTS bt_animais (
             id SERIAL PRIMARY KEY,
-            id_animal VARCHAR(50) NOT NULL,
-            data_nascimento TIMESTAMP,
-            id_propriedade VARCHAR(50) NOT NULL,
+            cod_empresa INTEGER,
+            cnpj_industria_abate VARCHAR(14),
+            tipo_unidade_abate VARCHAR(10),
+            nr_unidade_abate VARCHAR(10),
+            nr_op VARCHAR(20),
+            prod_cpf_cnpj VARCHAR(14),
+            dt_compra TIMESTAMP,
+            dt_abate TIMESTAMP,
+            flag_contusao BOOLEAN,
+            id_destino_abate INTEGER,
+            motivos_dif_info TEXT,
+            nr_sisbov VARCHAR(20),
+            sku_codigo INTEGER,
+            sku_descricao VARCHAR(100),
+            nr_sequencial INTEGER,
+            nr_banda INTEGER,
             sexo VARCHAR(1),
-            raca VARCHAR(100),
-            peso_nascimento DOUBLE PRECISION,
-            data_entrada TIMESTAMP,
-            data_saida TIMESTAMP,
-            status VARCHAR(20),
-            vacinas_info TEXT,
-            dados_adicionais JSONB,
+            nr_chip VARCHAR(50),
+            peso_vivo DOUBLE PRECISION,
+            peso_carcaca DOUBLE PRECISION,
+            hr_ultima_pesagem TIMESTAMP,
+            id_acabamento INTEGER,
+            id_conformacao INTEGER,
+            id_habilitacao_mercado_escala INTEGER,
+            id_habilitacao_mercado_etiqueta INTEGER,
+            id_categoria INTEGER,
+            id_maturidade INTEGER,
+            id_raca INTEGER,
+            dt_fechamento_camera_abate TIMESTAMP,
+            dt_abertura_camera_abate TIMESTAMP,
+            dt_corte_quarto TIMESTAMP,
+            valor_ph DOUBLE PRECISION,
+            cod_barra_abate VARCHAR(50),
+            lote_abate INTEGER,
             data_processamento TIMESTAMP
         )
         """
@@ -179,7 +231,7 @@ def criar_tabela_animais(spark, db_properties):
             .option("query", create_table_sql) \
             .load()
         
-        logger.info("Tabela de animais verificada/criada com sucesso!")
+        logger.info("Tabela bt_animais verificada/criada com sucesso!")
         return True
     except Exception as e:
         logger.error(f"Erro ao criar tabela de animais: {str(e)}")
@@ -248,6 +300,9 @@ def main():
         "password": args.db_password
     }
     
+    # Nome da tabela para gravar os dados
+    table_name = args.table_name if args.table_name else "bt_animais"
+    
     # Testar conexão com o Cloud SQL
     if not testar_conexao_sql(spark, db_properties):
         logger.error("Não foi possível estabelecer conexão com o Cloud SQL. Abortando.")
@@ -255,9 +310,9 @@ def main():
         sys.exit(1)
     
     try:
-        # Criar tabela de animais se não existir
+        # Criar tabela bt_animais se não existir
         if not criar_tabela_animais(spark, db_properties):
-            logger.error("Não foi possível criar/verificar a tabela de animais. Abortando.")
+            logger.error("Não foi possível criar/verificar a tabela bt_animais. Abortando.")
             spark.stop()
             sys.exit(1)
         
@@ -270,8 +325,13 @@ def main():
         # Processar dados
         df_processado = processar_dados(df)
         
-        # Gravar no Cloud SQL
-        gravar_no_cloud_sql(df_processado, db_properties, args.table_name, args.mode)
+        # Gravar os dados processados no Cloud SQL
+        try:
+            gravar_no_cloud_sql(df_processado, db_properties, table_name, args.mode)
+        except Exception as e:
+            logger.error(f"Erro ao gravar dados no Cloud SQL: {str(e)}")
+            spark.stop()
+            sys.exit(1)
         
         logger.info("Processamento concluído com sucesso!")
     except Exception as e:

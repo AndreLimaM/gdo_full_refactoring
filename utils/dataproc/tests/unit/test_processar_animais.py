@@ -13,7 +13,7 @@ import sys
 import os
 import pandas as pd
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StringType, DoubleType, TimestampType, BooleanType, ArrayType
+from pyspark.sql.types import StructType, StringType, DoubleType, TimestampType, BooleanType, ArrayType, IntegerType
 
 # Adicionar o diretório de scripts ao path para importar o módulo
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../scripts')))
@@ -50,55 +50,65 @@ class TestProcessarAnimais(unittest.TestCase):
         
         # Verificar se todos os campos esperados estão presentes
         campos_esperados = [
-            "id_animal", "data_nascimento", "id_propriedade", "sexo", "raca", 
-            "peso_nascimento", "data_entrada", "data_saida", "status", "dados_adicionais"
+            "cod_empresa", "cnpj_industria_abate", "tipo_unidade_abate", "nr_unidade_abate", 
+            "nr_op", "prod_cpf_cnpj", "dt_compra", "dt_abate", "flag_contusao", "id_destino_abate",
+            "motivos_dif", "nr_sequencial", "nr_banda", "sexo", "peso_vivo", "peso_carcaca",
+            "hr_ultima_pesagem", "dt_fechamento_camera_abate", "dt_abertura_camera_abate",
+            "valor_ph", "cod_barra_abate", "lote_abate"
         ]
         
         campos_schema = [field.name for field in schema.fields]
         for campo in campos_esperados:
             self.assertIn(campo, campos_schema)
 
-    def test_definir_schema_dados_adicionais(self):
-        """Testa se o schema dos dados adicionais é definido corretamente"""
-        schema = pa.definir_schema_dados_adicionais()
+    def test_definir_schema_motivos_dif(self):
+        """Testa se o schema dos motivos diferenciados é definido corretamente"""
+        schema = pa.definir_schema_motivos_dif()
         
-        # Verificar se é uma instância de StructType
-        self.assertIsInstance(schema, StructType)
+        # Verificar se é uma instância de ArrayType
+        self.assertIsInstance(schema, ArrayType)
         
-        # Verificar se todos os campos esperados estão presentes
-        campos_esperados = ["vacinado", "vacinas", "observacoes"]
+        # Verificar se o tipo de elemento é StructType
+        self.assertIsInstance(schema.elementType, StructType)
         
-        campos_schema = [field.name for field in schema.fields]
+        # Verificar se todos os campos esperados estão presentes no elemento
+        campos_esperados = ["id", "descricao"]
+        
+        campos_schema = [field.name for field in schema.elementType.fields]
         for campo in campos_esperados:
             self.assertIn(campo, campos_schema)
-        
-        # Verificar se o campo vacinas é um ArrayType
-        campo_vacinas = next(field for field in schema.fields if field.name == "vacinas")
-        self.assertIsInstance(campo_vacinas.dataType, ArrayType)
 
     def test_processar_dados(self):
         """Testa o processamento de dados de animais"""
         # Criar um DataFrame de teste
         dados_teste = [
             (
-                "ANI001", "2023-05-15", "PROP001", "M", "Nelore", 35.5, 
-                "2023-05-15", None, "ativo", 
-                {"vacinado": True, "vacinas": [{"tipo": "Aftosa", "data": "2023-06-15"}], "observacoes": "Animal saudável"}
+                180, "02916265008306", "1", "4507", "1975", "33333333333",
+                "2025-01-09", "2025-01-27", "False", -1,
+                [{"id": -1, "descricao": "N/A"}], "", 370362, "MEIA CARCAÇA RESF BOI INTEIRO (AVULSO)",
+                1357, 1, "M", "", 0.0, 224.4, "2025-01-27T14:27:00", 332, 0, 0, 0, 0, 0, 0,
+                "2025-01-28", "2025-01-27", "2025-01-28T19:50:12.247", 5.66, "045072701202513571", 8
             ),
             (
-                None, "2023-04-10", "PROP002", "F", "Angus", 32.0, 
-                "2023-04-10", None, "ativo", 
-                {"vacinado": True, "vacinas": [{"tipo": "Brucelose", "data": "2023-05-10"}], "observacoes": ""}
+                180, "02916265008306", "1", "4507", "466070", "45701849104",
+                "2025-01-09", "2025-01-27", "False", -1,
+                [{"id": -1, "descricao": "N/A"}], "", 370362, "MEIA CARCAÇA RESF BOI INTEIRO (AVULSO)",
+                1357, 2, "M", "", 0.0, 232.9, "2025-01-27T14:27:00", 332, 0, 0, 0, 0, 0, 0,
+                "2025-01-28", "2025-01-27", "2025-01-28T19:50:12.480", 5.61, "045072701202513572", 8
             ),
             (
-                "ANI003", "2023-03-20", None, "M", "Gir", 33.5, 
-                "2023-03-20", "2023-10-15", "inativo", 
-                {"vacinado": False, "vacinas": [], "observacoes": "Animal vendido"}
+                None, "02916265008306", "1", "4507", "466070", "45701849104",
+                "2025-01-09", "2025-01-27", "False", -1,
+                [{"id": -1, "descricao": "N/A"}], "", 382440, "MEIA CARCAÇA RESF NOVILHA (JOVEM)",
+                None, 1, "F", "", 0.0, 99.9, "2025-01-27T14:28:00", 331, 0, 0, 0, 0, 0, 0,
+                "2025-01-28", "2025-01-27", "2025-01-28T15:24:49.647", 5.67, "045072701202513601", 9
             ),
             (
-                "ANI004", "2023-02-05", "PROP001", "F", "Holandês", 30.0, 
-                "2023-02-05", None, "ativo", 
-                {"vacinado": True, "vacinas": [{"tipo": "Aftosa", "data": "2023-03-05"}, {"tipo": "Brucelose", "data": "2023-03-05"}], "observacoes": ""}
+                180, None, "1", "4507", "466070", "45701849104",
+                "2025-01-09", "2025-01-27", "False", -1,
+                [{"id": -1, "descricao": "N/A"}], "", 382440, "MEIA CARCAÇA RESF NOVILHA (JOVEM)",
+                1361, 1, "F", "", 0.0, 101.9, "2025-01-27T14:28:00", 21, 0, 0, 0, 0, 0, 0,
+                "2025-01-28", "2025-01-27", "2025-01-31T20:54:57.203", 5.57, "045072701202513611", 9
             )
         ]
         
@@ -108,14 +118,21 @@ class TestProcessarAnimais(unittest.TestCase):
         # Processar os dados
         df_processado = pa.processar_dados(df)
         
-        # Verificar se registros com id_animal ou id_propriedade nulos foram removidos
-        self.assertEqual(df_processado.count(), 2)  # Apenas 2 registros válidos
+        # Verificar se registros com nr_sequencial ou cnpj_industria_abate nulos foram removidos
+        self.assertEqual(df_processado.count(), 2)
         
-        # Verificar se a coluna data_processamento foi adicionada
+        # Verificar se os campos de data foram convertidos para timestamp
+        self.assertEqual(df_processado.schema["dt_compra"].dataType.typeName(), "timestamp")
+        self.assertEqual(df_processado.schema["dt_abate"].dataType.typeName(), "timestamp")
+        self.assertEqual(df_processado.schema["dt_fechamento_camera_abate"].dataType.typeName(), "timestamp")
+        self.assertEqual(df_processado.schema["dt_abertura_camera_abate"].dataType.typeName(), "timestamp")
+        self.assertEqual(df_processado.schema["hr_ultima_pesagem"].dataType.typeName(), "timestamp")
+        
+        # Verificar se o campo de processamento foi adicionado
         self.assertIn("data_processamento", df_processado.columns)
         
-        # Verificar se a coluna vacinas_info foi adicionada
-        self.assertIn("vacinas_info", df_processado.columns)
+        # Verificar se as informações de motivos_dif foram extraídas
+        self.assertIn("motivos_dif_info", df_processado.columns)
 
     @patch('processar_animais.logger')
     def test_ler_arquivos_json(self, mock_logger):
@@ -137,8 +154,8 @@ class TestProcessarAnimais(unittest.TestCase):
         self.assertEqual(resultado, mock_df)
 
     @patch('processar_animais.logger')
-    def test_criar_tabela_animais_sucesso(self, mock_logger):
-        """Testa a criação bem-sucedida da tabela de animais"""
+    def test_criar_tabela_animais(self, mock_logger):
+        """Testa a criação da tabela bt_animais"""
         # Configurar o mock para o método read.format().option().load() do Spark
         self.spark.read = MagicMock()
         self.spark.read.format = MagicMock(return_value=self.spark.read)
@@ -159,11 +176,11 @@ class TestProcessarAnimais(unittest.TestCase):
         self.assertTrue(resultado)
         
         # Verificar se o logger foi chamado
-        mock_logger.info.assert_called()
+        mock_logger.info.assert_called_with("Tabela bt_animais verificada/criada com sucesso!")
 
     @patch('processar_animais.logger')
     def test_criar_tabela_animais_falha(self, mock_logger):
-        """Testa a falha na criação da tabela de animais"""
+        """Testa a falha na criação da tabela bt_animais"""
         # Configurar o mock para lançar uma exceção
         self.spark.read = MagicMock()
         self.spark.read.format = MagicMock(return_value=self.spark.read)
@@ -184,7 +201,7 @@ class TestProcessarAnimais(unittest.TestCase):
         self.assertFalse(resultado)
         
         # Verificar se o logger de erro foi chamado
-        mock_logger.error.assert_called()
+        mock_logger.error.assert_called_with("Erro ao criar tabela de animais: Erro ao criar tabela")
 
     @patch('processar_animais.logger')
     def test_gravar_no_cloud_sql(self, mock_logger):

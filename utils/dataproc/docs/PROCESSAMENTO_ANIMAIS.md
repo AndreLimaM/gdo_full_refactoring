@@ -6,33 +6,38 @@ Este documento descreve a implementação do processamento de dados de animais u
 
 ## Estrutura dos Dados de Animais
 
-Os arquivos JSON de animais seguem a seguinte estrutura:
+Os arquivos JSON de animais seguem a estrutura conforme o exemplo localizado em `/json_examples/animais/animais_2025_02_01_05_42_01_406Z.json`. Abaixo está um exemplo simplificado:
 
 ```json
 {
-    "id_animal": "ANI001",
-    "data_nascimento": "2023-05-15",
-    "id_propriedade": "PROP001",
+    "cod_empresa": 180,
+    "cnpj_industria_abate": "02916265008306",
+    "tipo_unidade_abate": "1",
+    "nr_unidade_abate": "4507",
+    "nr_op": "1975",
+    "prod_cpf_cnpj": "33333333333",
+    "dt_compra": "2025-01-09",
+    "dt_abate": "2025-01-27",
+    "flag_contusao": "False",
+    "id_destino_abate": -1,
+    "motivos_dif": [
+        {
+            "id": -1,
+            "descricao": "N/A"
+        }
+    ],
+    "nr_sequencial": 1357,
+    "nr_banda": 1,
     "sexo": "M",
-    "raca": "Nelore",
-    "peso_nascimento": 35.5,
-    "data_entrada": "2023-05-15",
-    "data_saida": null,
-    "status": "ativo",
-    "dados_adicionais": {
-        "vacinado": true,
-        "vacinas": [
-            {
-                "tipo": "Aftosa",
-                "data": "2023-06-15"
-            },
-            {
-                "tipo": "Brucelose",
-                "data": "2023-06-15"
-            }
-        ],
-        "observacoes": "Animal saudável"
-    }
+    "nr_chip": "",
+    "peso_vivo": 0,
+    "peso_carcaca": 224.4,
+    "hr_ultima_pesagem": "2025-01-27T14:27:00",
+    "dt_fechamento_camera_abate": "2025-01-28",
+    "dt_abertura_camera_abate": "2025-01-27",
+    "valor_ph": 5.66,
+    "cod_barra_abate": "045072701202513571",
+    "lote_abate": 8
 }
 ```
 
@@ -144,10 +149,10 @@ def processar_dados(df):
 
 #### 3. Criação da Tabela no Cloud SQL
 
-A tabela `animais` é criada automaticamente no Cloud SQL se não existir:
+A tabela `bt_animais` é criada automaticamente no Cloud SQL se não existir:
 
 ```sql
-CREATE TABLE IF NOT EXISTS animais (
+CREATE TABLE IF NOT EXISTS bt_animais (
     id SERIAL PRIMARY KEY,
     id_animal VARCHAR(50) NOT NULL,
     data_nascimento TIMESTAMP,
