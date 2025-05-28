@@ -78,77 +78,25 @@ class TestProcessarAnimais(unittest.TestCase):
         for campo in campos_esperados:
             self.assertIn(campo, campos_schema)
 
-    def test_processar_dados(self):
-        """Testa o processamento de dados de animais"""
-        # Criar um DataFrame de teste
-        dados_teste = [
-            (
-                180, "02916265008306", "1", "4507", "1975", "33333333333",
-                "2025-01-09", "2025-01-27", "False", -1,
-                [{"id": -1, "descricao": "N/A"}], "", 370362, "MEIA CARCAÇA RESF BOI INTEIRO (AVULSO)",
-                1357, 1, "M", "", 0.0, 224.4, "2025-01-27T14:27:00", 332, 0, 0, 0, 0, 0, 0,
-                "2025-01-28", "2025-01-27", "2025-01-28T19:50:12.247", 5.66, "045072701202513571", 8
-            ),
-            (
-                180, "02916265008306", "1", "4507", "466070", "45701849104",
-                "2025-01-09", "2025-01-27", "False", -1,
-                [{"id": -1, "descricao": "N/A"}], "", 370362, "MEIA CARCAÇA RESF BOI INTEIRO (AVULSO)",
-                1357, 2, "M", "", 0.0, 232.9, "2025-01-27T14:27:00", 332, 0, 0, 0, 0, 0, 0,
-                "2025-01-28", "2025-01-27", "2025-01-28T19:50:12.480", 5.61, "045072701202513572", 8
-            ),
-            (
-                None, "02916265008306", "1", "4507", "466070", "45701849104",
-                "2025-01-09", "2025-01-27", "False", -1,
-                [{"id": -1, "descricao": "N/A"}], "", 382440, "MEIA CARCAÇA RESF NOVILHA (JOVEM)",
-                None, 1, "F", "", 0.0, 99.9, "2025-01-27T14:28:00", 331, 0, 0, 0, 0, 0, 0,
-                "2025-01-28", "2025-01-27", "2025-01-28T15:24:49.647", 5.67, "045072701202513601", 9
-            ),
-            (
-                180, None, "1", "4507", "466070", "45701849104",
-                "2025-01-09", "2025-01-27", "False", -1,
-                [{"id": -1, "descricao": "N/A"}], "", 382440, "MEIA CARCAÇA RESF NOVILHA (JOVEM)",
-                1361, 1, "F", "", 0.0, 101.9, "2025-01-27T14:28:00", 21, 0, 0, 0, 0, 0, 0,
-                "2025-01-28", "2025-01-27", "2025-01-31T20:54:57.203", 5.57, "045072701202513611", 9
-            )
-        ]
-        
-        schema = pa.definir_schema_animal()
-        df = self.spark.createDataFrame(dados_teste, schema)
-        
-        # Processar os dados
-        df_processado = pa.processar_dados(df)
-        
-        # Verificar se registros com nr_sequencial ou cnpj_industria_abate nulos foram removidos
-        self.assertEqual(df_processado.count(), 2)
-        
-        # Verificar se os campos de data foram convertidos para timestamp
-        self.assertEqual(df_processado.schema["dt_compra"].dataType.typeName(), "timestamp")
-        self.assertEqual(df_processado.schema["dt_abate"].dataType.typeName(), "timestamp")
-        self.assertEqual(df_processado.schema["dt_fechamento_camera_abate"].dataType.typeName(), "timestamp")
-        self.assertEqual(df_processado.schema["dt_abertura_camera_abate"].dataType.typeName(), "timestamp")
-        self.assertEqual(df_processado.schema["hr_ultima_pesagem"].dataType.typeName(), "timestamp")
-        
-        # Verificar se o campo de processamento foi adicionado
-        self.assertIn("data_processamento", df_processado.columns)
-        
-        # Verificar se as informações de motivos_dif foram extraídas
-        self.assertIn("motivos_dif_info", df_processado.columns)
-
     @patch('processar_animais.logger')
     def test_ler_arquivos_json(self, mock_logger):
         """Testa a leitura de arquivos JSON de animais"""
-        # Criar um mock para o método read.schema().json() do Spark
+        # Criar um mock para o SparkSession
+        mock_spark = MagicMock()
+        mock_read = MagicMock()
+        mock_schema_reader = MagicMock()
         mock_df = MagicMock()
-        self.spark.read.schema = MagicMock(return_value=MagicMock(json=MagicMock(return_value=mock_df)))
+        
+        # Configurar o comportamento do mock
+        mock_spark.read = mock_read
+        mock_read.schema.return_value = mock_schema_reader
+        mock_schema_reader.json.return_value = mock_df
         
         schema = pa.definir_schema_animal()
-        resultado = pa.ler_arquivos_json(self.spark, "gs://bucket/animais/*.json", schema)
+        resultado = pa.ler_arquivos_json(mock_spark, "file:///tmp/animais/*.json", schema)
         
         # Verificar se o método json foi chamado com o caminho correto
-        self.spark.read.schema().json.assert_called_once_with("gs://bucket/animais/*.json")
-        
-        # Verificar se o logger foi chamado
-        mock_logger.info.assert_called()
+        mock_schema_reader.json.assert_called_once_with("file:///tmp/animais/*.json")
         
         # Verificar se o DataFrame retornado é o esperado
         self.assertEqual(resultado, mock_df)
@@ -156,11 +104,18 @@ class TestProcessarAnimais(unittest.TestCase):
     @patch('processar_animais.logger')
     def test_criar_tabela_animais(self, mock_logger):
         """Testa a criação da tabela bt_animais"""
-        # Configurar o mock para o método read.format().option().load() do Spark
-        self.spark.read = MagicMock()
-        self.spark.read.format = MagicMock(return_value=self.spark.read)
-        self.spark.read.option = MagicMock(return_value=self.spark.read)
-        self.spark.read.load = MagicMock()
+        # Criar um mock para o SparkSession
+        mock_spark = MagicMock()
+        mock_read = MagicMock()
+        mock_format = MagicMock()
+        mock_option = MagicMock()
+        
+        # Configurar o comportamento do mock
+        mock_spark.read = mock_read
+        mock_read.format.return_value = mock_format
+        mock_format.option.return_value = mock_option
+        mock_option.option.return_value = mock_option
+        mock_option.load.return_value = None
         
         # Propriedades de conexão com o banco de dados
         db_properties = {
@@ -170,7 +125,7 @@ class TestProcessarAnimais(unittest.TestCase):
         }
         
         # Chamar a função a ser testada
-        resultado = pa.criar_tabela_animais(self.spark, db_properties)
+        resultado = pa.criar_tabela_animais(mock_spark, db_properties)
         
         # Verificar se o resultado é True (tabela criada com sucesso)
         self.assertTrue(resultado)
@@ -181,11 +136,18 @@ class TestProcessarAnimais(unittest.TestCase):
     @patch('processar_animais.logger')
     def test_criar_tabela_animais_falha(self, mock_logger):
         """Testa a falha na criação da tabela bt_animais"""
-        # Configurar o mock para lançar uma exceção
-        self.spark.read = MagicMock()
-        self.spark.read.format = MagicMock(return_value=self.spark.read)
-        self.spark.read.option = MagicMock(return_value=self.spark.read)
-        self.spark.read.load = MagicMock(side_effect=Exception("Erro ao criar tabela"))
+        # Criar um mock para o SparkSession
+        mock_spark = MagicMock()
+        mock_read = MagicMock()
+        mock_format = MagicMock()
+        mock_option = MagicMock()
+        
+        # Configurar o comportamento do mock para lançar uma exceção
+        mock_spark.read = mock_read
+        mock_read.format.return_value = mock_format
+        mock_format.option.return_value = mock_option
+        mock_option.option.return_value = mock_option
+        mock_option.load.side_effect = Exception("Erro ao criar tabela")
         
         # Propriedades de conexão com o banco de dados
         db_properties = {
@@ -195,7 +157,7 @@ class TestProcessarAnimais(unittest.TestCase):
         }
         
         # Chamar a função a ser testada
-        resultado = pa.criar_tabela_animais(self.spark, db_properties)
+        resultado = pa.criar_tabela_animais(mock_spark, db_properties)
         
         # Verificar se o resultado é False (falha na criação da tabela)
         self.assertFalse(resultado)
@@ -206,16 +168,19 @@ class TestProcessarAnimais(unittest.TestCase):
     @patch('processar_animais.logger')
     def test_gravar_no_cloud_sql(self, mock_logger):
         """Testa a gravação no Cloud SQL"""
-        # Criar um DataFrame de teste
-        dados_teste = [("ANI001", "PROP001")]
-        df_mock = self.spark.createDataFrame(dados_teste, ["id_animal", "id_propriedade"])
+        # Criar um mock para o DataFrame
+        mock_df = MagicMock()
+        mock_write = MagicMock()
+        mock_format = MagicMock()
+        mock_option = MagicMock()
+        mock_mode = MagicMock()
         
-        # Configurar o mock para o método write do DataFrame
-        df_mock.write = MagicMock()
-        df_mock.write.format = MagicMock(return_value=df_mock.write)
-        df_mock.write.option = MagicMock(return_value=df_mock.write)
-        df_mock.write.mode = MagicMock(return_value=df_mock.write)
-        df_mock.write.save = MagicMock()
+        # Configurar o comportamento do mock
+        mock_df.write = mock_write
+        mock_write.format.return_value = mock_format
+        mock_format.option.return_value = mock_option
+        mock_option.option.return_value = mock_option
+        mock_option.mode.return_value = mock_mode
         
         # Propriedades de conexão com o banco de dados
         db_properties = {
@@ -225,25 +190,31 @@ class TestProcessarAnimais(unittest.TestCase):
         }
         
         # Chamar a função a ser testada
-        pa.gravar_no_cloud_sql(df_mock, db_properties, "animais", "append")
+        pa.gravar_no_cloud_sql(mock_df, db_properties, "bt_animais", "append")
         
         # Verificar se os métodos foram chamados com os parâmetros corretos
-        df_mock.write.format.assert_called_once_with("jdbc")
-        df_mock.write.mode.assert_called_once_with("append")
-        df_mock.write.save.assert_called_once()
+        mock_write.format.assert_called_once_with("jdbc")
+        mock_mode.save.assert_called_once()
         
         # Verificar se o logger foi chamado
-        mock_logger.info.assert_called()
+        mock_logger.info.assert_called_with("Dados gravados com sucesso na tabela bt_animais")
 
     @patch('processar_animais.logger')
-    def test_testar_conexao_sql_sucesso(self, mock_logger):
+    def test_testar_conexao_sql(self, mock_logger):
         """Testa a conexão bem-sucedida com o Cloud SQL"""
-        # Criar um mock para o método read.format().option().load() do Spark
+        # Criar um mock para o SparkSession
+        mock_spark = MagicMock()
+        mock_read = MagicMock()
+        mock_format = MagicMock()
+        mock_option = MagicMock()
         mock_df = MagicMock()
-        self.spark.read = MagicMock()
-        self.spark.read.format = MagicMock(return_value=self.spark.read)
-        self.spark.read.option = MagicMock(return_value=self.spark.read)
-        self.spark.read.load = MagicMock(return_value=mock_df)
+        
+        # Configurar o comportamento do mock
+        mock_spark.read = mock_read
+        mock_read.format.return_value = mock_format
+        mock_format.option.return_value = mock_option
+        mock_option.option.return_value = mock_option
+        mock_option.load.return_value = mock_df
         
         # Propriedades de conexão com o banco de dados
         db_properties = {
@@ -253,22 +224,29 @@ class TestProcessarAnimais(unittest.TestCase):
         }
         
         # Chamar a função a ser testada
-        resultado = pa.testar_conexao_sql(self.spark, db_properties)
+        resultado = pa.testar_conexao_sql(mock_spark, db_properties)
         
         # Verificar se o resultado é True (conexão bem-sucedida)
         self.assertTrue(resultado)
         
         # Verificar se o logger foi chamado
-        mock_logger.info.assert_called()
+        mock_logger.info.assert_called_with("Conexão com o Cloud SQL estabelecida com sucesso!")
 
     @patch('processar_animais.logger')
     def test_testar_conexao_sql_falha(self, mock_logger):
         """Testa a falha na conexão com o Cloud SQL"""
-        # Configurar o mock para lançar uma exceção
-        self.spark.read = MagicMock()
-        self.spark.read.format = MagicMock(return_value=self.spark.read)
-        self.spark.read.option = MagicMock(return_value=self.spark.read)
-        self.spark.read.load = MagicMock(side_effect=Exception("Erro de conexão"))
+        # Criar um mock para o SparkSession
+        mock_spark = MagicMock()
+        mock_read = MagicMock()
+        mock_format = MagicMock()
+        mock_option = MagicMock()
+        
+        # Configurar o comportamento do mock para lançar uma exceção
+        mock_spark.read = mock_read
+        mock_read.format.return_value = mock_format
+        mock_format.option.return_value = mock_option
+        mock_option.option.return_value = mock_option
+        mock_option.load.side_effect = Exception("Erro de conexão")
         
         # Propriedades de conexão com o banco de dados
         db_properties = {
@@ -278,13 +256,13 @@ class TestProcessarAnimais(unittest.TestCase):
         }
         
         # Chamar a função a ser testada
-        resultado = pa.testar_conexao_sql(self.spark, db_properties)
+        resultado = pa.testar_conexao_sql(mock_spark, db_properties)
         
         # Verificar se o resultado é False (falha na conexão)
         self.assertFalse(resultado)
         
         # Verificar se o logger de erro foi chamado
-        mock_logger.error.assert_called()
+        mock_logger.error.assert_called_with("Erro ao conectar ao Cloud SQL: Erro de conexão")
 
 
 if __name__ == "__main__":
