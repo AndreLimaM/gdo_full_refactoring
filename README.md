@@ -206,7 +206,8 @@ Foi implementada uma solução para processamento de dados JSON utilizando o Goo
 utils/dataproc/
 ├── docs/                          # Documentação detalhada
 │   ├── CONEXAO_DATAPROC_CLOUDSQL.md  # Documentação sobre a conexão entre Dataproc e Cloud SQL
-│   └── PROCESSAMENTO_JSON_PARA_SQL.md # Documentação sobre o processamento de JSONs
+│   ├── PROCESSAMENTO_JSON_PARA_SQL.md # Documentação sobre o processamento de JSONs
+│   └── TESTES_UNITARIOS.md          # Documentação detalhada sobre os testes unitários
 │
 ├── scripts/                       # Scripts principais para produção
 │   ├── configurar_firewall_cloudsql.sh # Script para configurar o firewall do Cloud SQL
@@ -242,6 +243,7 @@ Para mais informações sobre a implementação, consulte:
 
 - [Conexão entre Dataproc e Cloud SQL](./utils/dataproc/docs/CONEXAO_DATAPROC_CLOUDSQL.md)
 - [Processamento de JSONs e Gravação no SQL](./utils/dataproc/docs/PROCESSAMENTO_JSON_PARA_SQL.md)
+- [Testes Unitários](./utils/dataproc/docs/TESTES_UNITARIOS.md)
 
 ## Próximos Passos
 
