@@ -1,98 +1,98 @@
-# Documentau00e7u00e3o: Processamento de JSONs com Dataproc e Gravau00e7u00e3o no Cloud SQL
+# Documentação: Processamento de JSONs com Dataproc e Gravação no Cloud SQL
 
-## Visu00e3o Geral
+## Visão Geral
 
-Este documento descreve o processo de processamento de arquivos JSON armazenados no Google Cloud Storage (GCS) utilizando o Dataproc e a gravau00e7u00e3o dos dados processados no Cloud SQL PostgreSQL.
+Este documento descreve o processo de processamento de arquivos JSON armazenados no Google Cloud Storage (GCS) utilizando o Dataproc e a gravação dos dados processados no Cloud SQL PostgreSQL.
 
-## Arquitetura da Soluu00e7u00e3o
+## Arquitetura da Solução
 
-A soluu00e7u00e3o implementada segue a seguinte arquitetura:
+A solução implementada segue a seguinte arquitetura:
 
 1. **Armazenamento de Dados Brutos**: Arquivos JSON armazenados no Google Cloud Storage (GCS).
-2. **Processamento de Dados**: Cluster Dataproc com Apache Spark para processamento distribuu00eddo.
+2. **Processamento de Dados**: Cluster Dataproc com Apache Spark para processamento distribuído.
 3. **Armazenamento de Dados Processados**: Banco de dados PostgreSQL no Cloud SQL.
-4. **Orquestrau00e7u00e3o**: Scripts shell para automatizar o processo de criau00e7u00e3o do cluster, processamento e limpeza de recursos.
+4. **Orquestração**: Scripts shell para automatizar o processo de criação do cluster, processamento e limpeza de recursos.
 
 ## Componentes Principais
 
-### 1. Script de Inicializau00e7u00e3o do Dataproc
+### 1. Script de Inicialização do Dataproc
 
-O script `init_script.sh` u00e9 executado durante a criau00e7u00e3o do cluster Dataproc e instala todas as dependu00eancias necessu00e1rias:
+O script `init_script.sh` é executado durante a criação do cluster Dataproc e instala todas as dependências necessárias:
 
 - Driver JDBC do PostgreSQL
 - Cloud SQL Auth Proxy
-- Bibliotecas Python necessu00e1rias
+- Bibliotecas Python necessárias
 
 ### 2. Script de Processamento PySpark
 
-O script `processar_json_para_sql.py` realiza o processamento dos arquivos JSON e a gravau00e7u00e3o no Cloud SQL:
+O script `processar_json_para_sql.py` realiza o processamento dos arquivos JSON e a gravação no Cloud SQL:
 
 - Leitura de arquivos JSON do GCS
-- Transformau00e7u00e3o e processamento dos dados
-- Gravau00e7u00e3o dos dados processados no Cloud SQL
+- Transformação e processamento dos dados
+- Gravação dos dados processados no Cloud SQL
 
-### 3. Script de Execuu00e7u00e3o
+### 3. Script de Execução
 
 O script `executar_processamento.sh` orquestra todo o processo:
 
-- Criau00e7u00e3o do cluster Dataproc
-- Configurau00e7u00e3o do Cloud SQL para aceitar conexu00f5es
-- Execuu00e7u00e3o do job de processamento
-- Limpeza de recursos apu00f3s a conclusu00e3o
+- Criação do cluster Dataproc
+- Configuração do Cloud SQL para aceitar conexões
+- Execução do job de processamento
+- Limpeza de recursos após a conclusão
 
-## Fluxo de Execuu00e7u00e3o
+## Fluxo de Execução
 
-1. **Preparau00e7u00e3o**:
-   - Upload dos scripts de inicializau00e7u00e3o e processamento para o GCS
-   - Configurau00e7u00e3o do Cloud SQL para aceitar conexu00f5es do Dataproc
+1. **Preparação**:
+   - Upload dos scripts de inicialização e processamento para o GCS
+   - Configuração do Cloud SQL para aceitar conexões do Dataproc
 
-2. **Criau00e7u00e3o do Cluster**:
-   - Criau00e7u00e3o de um cluster Dataproc com as configurau00e7u00f5es necessu00e1rias
-   - Execuu00e7u00e3o do script de inicializau00e7u00e3o para instalar dependu00eancias
+2. **Criação do Cluster**:
+   - Criação de um cluster Dataproc com as configurações necessárias
+   - Execução do script de inicialização para instalar dependências
 
 3. **Processamento de Dados**:
-   - Execuu00e7u00e3o do script PySpark para processar os arquivos JSON
-   - Transformau00e7u00e3o e limpeza dos dados conforme necessu00e1rio
+   - Execução do script PySpark para processar os arquivos JSON
+   - Transformação e limpeza dos dados conforme necessário
 
-4. **Gravau00e7u00e3o no Cloud SQL**:
-   - Conexu00e3o com o Cloud SQL via JDBC
-   - Gravau00e7u00e3o dos dados processados nas tabelas apropriadas
+4. **Gravação no Cloud SQL**:
+   - Conexão com o Cloud SQL via JDBC
+   - Gravação dos dados processados nas tabelas apropriadas
 
 5. **Limpeza**:
-   - Exclusu00e3o do cluster Dataproc apu00f3s a conclusu00e3o do processamento
+   - Exclusão do cluster Dataproc após a conclusão do processamento
 
-## Configurau00e7u00e3o do Ambiente
+## Configuração do Ambiente
 
-### Pru00e9-requisitos
+### Pré-requisitos
 
-- Projeto Google Cloud com APIs necessu00e1rias ativadas (Dataproc, Cloud SQL, GCS)
+- Projeto Google Cloud com APIs necessárias ativadas (Dataproc, Cloud SQL, GCS)
 - Bucket GCS para armazenamento de scripts e dados
-- Instu00e2ncia Cloud SQL PostgreSQL configurada
-- Permissu00f5es IAM adequadas para acessar os serviu00e7os
+- Instância Cloud SQL PostgreSQL configurada
+- Permissões IAM adequadas para acessar os serviços
 
-### Estrutura de Diretu00f3rios no GCS
+### Estrutura de Diretórios no GCS
 
 ```
 gs://repo-dev-gdo-carga/
-u251cu2500u2500 datalake/
-u2502   u251cu2500u2500 utils/
-u2502   u2502   u251cu2500u2500 listar_tabelas_cloudsql.py
-u2502   u2502   u251cu2500u2500 processar_json_para_sql.py
-u2502   u2502   u2514u2500u2500 ...
-u2502   u251cu2500u2500 dados/
-u2502   u2502   u251cu2500u2500 animais/
-u2502   u2502   u2502   u2514u2500u2500 *.json
-u2502   u2502   u2514u2500u2500 ...
-u251cu2500u2500 scripts/
-u2502   u251cu2500u2500 init_script.sh
-u2502   u2514u2500u2500 install_postgresql_driver.sh
-u251cu2500u2500 jobs/
-u2502   u2514u2500u2500 ...
+├── datalake/
+│   ├── utils/
+│   │   ├── listar_tabelas_cloudsql.py
+│   │   ├── processar_json_para_sql.py
+│   │   └── ...
+│   ├── dados/
+│   │   ├── animais/
+│   │   │   └── *.json
+│   │   └── ...
+├── scripts/
+│   ├── init_script.sh
+│   └── install_postgresql_driver.sh
+├── jobs/
+│   └── ...
 ```
 
-## Execuu00e7u00e3o do Processamento
+## Execução do Processamento
 
-Para executar o processamento de JSONs e gravau00e7u00e3o no Cloud SQL, utilize o seguinte comando:
+Para executar o processamento de JSONs e gravação no Cloud SQL, utilize o seguinte comando:
 
 ```bash
 ./utils/dataproc/scripts/executar_processamento.sh \
@@ -102,58 +102,58 @@ Para executar o processamento de JSONs e gravau00e7u00e3o no Cloud SQL, utilize 
   --tabela bt_animais
 ```
 
-### Paru00e2metros
+### Parâmetros
 
 - `--projeto`: ID do projeto Google Cloud
-- `--bucket`: Nome do bucket GCS onde os scripts e dados estu00e3o armazenados
+- `--bucket`: Nome do bucket GCS onde os scripts e dados estão armazenados
 - `--input`: Caminho para os arquivos JSON de entrada (suporta wildcards)
-- `--tabela`: Nome da tabela no Cloud SQL onde os dados seru00e3o gravados
+- `--tabela`: Nome da tabela no Cloud SQL onde os dados serão gravados
 
-## Personalizau00e7u00e3o do Processamento
+## Personalização do Processamento
 
-O script `processar_json_para_sql.py` contu00e9m funu00e7u00f5es que podem ser personalizadas para atender a requisitos especu00edficos:
+O script `processar_json_para_sql.py` contém funções que podem ser personalizadas para atender a requisitos específicos:
 
 - `definir_schema_animal()`: Define o schema para os dados de animais nos arquivos JSON
-- `processar_dados()`: Implementa transformau00e7u00f5es especu00edficas para os dados
+- `processar_dados()`: Implementa transformações específicas para os dados
 
 ## Monitoramento e Logs
 
 O script de processamento gera logs detalhados que podem ser usados para monitorar o progresso e diagnosticar problemas:
 
-- Logs do Dataproc: Disponu00edveis no Console do Google Cloud
-- Logs do script: Exibidos no terminal durante a execuu00e7u00e3o
+- Logs do Dataproc: Disponíveis no Console do Google Cloud
+- Logs do script: Exibidos no terminal durante a execução
 
-## Considerau00e7u00f5es de Seguranu00e7a
+## Considerações de Segurança
 
-- **Credenciais**: As credenciais do banco de dados su00e3o passadas como argumentos para o script. Em ambiente de produu00e7u00e3o, considere usar o Secret Manager.
-- **Firewall**: O Cloud SQL deve ser configurado para aceitar conexu00f5es do Dataproc. Em produu00e7u00e3o, limite os IPs autorizados apenas aos do Dataproc.
-- **VPC Peering**: Para maior seguranu00e7a, considere implementar VPC peering entre as redes do Dataproc e do Cloud SQL.
+- **Credenciais**: As credenciais do banco de dados são passadas como argumentos para o script. Em ambiente de produção, considere usar o Secret Manager.
+- **Firewall**: O Cloud SQL deve ser configurado para aceitar conexões do Dataproc. Em produção, limite os IPs autorizados apenas aos do Dataproc.
+- **VPC Peering**: Para maior segurança, considere implementar VPC peering entre as redes do Dataproc e do Cloud SQL.
 
-## Otimizau00e7u00e3o de Desempenho
+## Otimização de Desempenho
 
-Para otimizar o desempenho do processamento, considere as seguintes configurau00e7u00f5es:
+Para otimizar o desempenho do processamento, considere as seguintes configurações:
 
-- **Tamanho do Cluster**: Ajuste o nu00famero de nu00f3s workers com base no volume de dados
-- **Partiu00e7u00e3o de Dados**: Use a partiu00e7u00e3o de dados para processar grandes volumes de dados
-- **Configurau00e7u00f5es do Spark**: Ajuste as configurau00e7u00f5es de memu00f3ria e execuu00e7u00e3o do Spark
-- **Gravau00e7u00e3o em Lote**: Use o paru00e2metro `batchsize` para otimizar a gravau00e7u00e3o no banco de dados
+- **Tamanho do Cluster**: Ajuste o número de nós workers com base no volume de dados
+- **Partição de Dados**: Use a partição de dados para processar grandes volumes de dados
+- **Configurações do Spark**: Ajuste as configurações de memória e execução do Spark
+- **Gravação em Lote**: Use o parâmetro `batchsize` para otimizar a gravação no banco de dados
 
-## Soluu00e7u00e3o de Problemas
+## Solução de Problemas
 
-### Problemas Comuns e Soluu00e7u00f5es
+### Problemas Comuns e Soluções
 
-1. **Erro de Conexu00e3o com o Cloud SQL**:
-   - Verifique se o IP do Dataproc estu00e1 na lista de IPs autorizados do Cloud SQL
-   - Verifique se as credenciais do banco de dados estu00e3o corretas
+1. **Erro de Conexão com o Cloud SQL**:
+   - Verifique se o IP do Dataproc está na lista de IPs autorizados do Cloud SQL
+   - Verifique se as credenciais do banco de dados estão corretas
 
 2. **Erro de Processamento de JSON**:
-   - Verifique se o schema definido corresponde u00e0 estrutura dos arquivos JSON
-   - Verifique se os arquivos JSON su00e3o vu00e1lidos
+   - Verifique se o schema definido corresponde à estrutura dos arquivos JSON
+   - Verifique se os arquivos JSON são válidos
 
-3. **Erro de Memu00f3ria no Spark**:
-   - Aumente a memu00f3ria alocada para o driver e executors do Spark
+3. **Erro de Memória no Spark**:
+   - Aumente a memória alocada para o driver e executors do Spark
    - Particione os dados para processamento em lotes menores
 
-## Conclusu00e3o
+## Conclusão
 
-A soluu00e7u00e3o implementada permite o processamento eficiente de arquivos JSON armazenados no GCS utilizando o Dataproc e a gravau00e7u00e3o dos dados processados no Cloud SQL PostgreSQL. A arquitetura u00e9 escalu00e1vel e pode ser adaptada para diferentes volumes de dados e requisitos de processamento.
+A solução implementada permite o processamento eficiente de arquivos JSON armazenados no GCS utilizando o Dataproc e a gravação dos dados processados no Cloud SQL PostgreSQL. A arquitetura é escalável e pode ser adaptada para diferentes volumes de dados e requisitos de processamento.

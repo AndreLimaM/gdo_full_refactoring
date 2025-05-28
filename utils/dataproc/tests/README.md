@@ -1,74 +1,74 @@
-# Testes para Integrau00e7u00e3o Dataproc e Cloud SQL
+# Testes para Integração Dataproc e Cloud SQL
 
-Este diretu00f3rio contu00e9m testes para validar a integrau00e7u00e3o entre o Google Dataproc e o Cloud SQL PostgreSQL, bem como os scripts de processamento de dados JSON.
+Este diretório contém testes para validar a integração entre o Google Dataproc e o Cloud SQL PostgreSQL, bem como os scripts de processamento de dados JSON.
 
 ## Tipos de Testes
 
-Implementamos dois tipos de testes para garantir a qualidade e confiabilidade do cu00f3digo:
+Implementamos dois tipos de testes para garantir a qualidade e confiabilidade do código:
 
-### 1. Testes de Integrau00e7u00e3o
+### 1. Testes de Integração
 
-Os testes de integrau00e7u00e3o validam a comunicau00e7u00e3o e o funcionamento conjunto entre diferentes sistemas (Dataproc e Cloud SQL).
+Os testes de integração validam a comunicação e o funcionamento conjunto entre diferentes sistemas (Dataproc e Cloud SQL).
 
-**Caracteru00edsticas:**
-- Testam a interau00e7u00e3o entre componentes reais
+**Características:**
+- Testam a interação entre componentes reais
 - Utilizam infraestrutura real (clusters Dataproc, banco de dados Cloud SQL)
 - Verificam a conectividade e o fluxo de dados completo
-- Su00e3o mais lentos e consomem mais recursos
+- São mais lentos e consomem mais recursos
 
-**Arquivos de teste de integrau00e7u00e3o:**
+**Arquivos de teste de integração:**
 - `executar_teste_conectividade.sh`: Testa a conectividade TCP entre Dataproc e Cloud SQL
-- `executar_teste_conexao_simples.sh`: Testa a conexu00e3o JDBC simplificada
-- `testar_conexao_dataproc_cloudsql.py`: Teste completo de conexu00e3o e operau00e7u00f5es SQL
+- `executar_teste_conexao_simples.sh`: Testa a conexão JDBC simplificada
+- `testar_conexao_dataproc_cloudsql.py`: Teste completo de conexão e operações SQL
 
-### 2. Testes Unitu00e1rios
+### 2. Testes Unitários
 
-Os testes unitu00e1rios validam o funcionamento isolado de funu00e7u00f5es e mu00e9todos especu00edficos, sem dependu00eancias externas.
+Os testes unitários validam o funcionamento isolado de funções e métodos específicos, sem dependências externas.
 
-**Caracteru00edsticas:**
-- Testam uma u00fanica unidade de cu00f3digo isoladamente
-- Utilizam mocks e stubs para simular dependu00eancias
-- Su00e3o ru00e1pidos e leves
-- Facilitam a identificau00e7u00e3o precisa de problemas
+**Características:**
+- Testam uma única unidade de código isoladamente
+- Utilizam mocks e stubs para simular dependências
+- São rápidos e leves
+- Facilitam a identificação precisa de problemas
 
-**Arquivos de teste unitu00e1rio:**
-- `unit/test_processar_json_para_sql.py`: Testes unitu00e1rios para o script de processamento de JSON
+**Arquivos de teste unitário:**
+- `unit/test_processar_json_para_sql.py`: Testes unitários para o script de processamento de JSON
 
-## Execuu00e7u00e3o dos Testes
+## Execução dos Testes
 
-### Executar Testes de Integrau00e7u00e3o
+### Executar Testes de Integração
 
-Para executar os testes de integrau00e7u00e3o, use os scripts especu00edficos:
+Para executar os testes de integração, use os scripts específicos:
 
 ```bash
-# Teste de conectividade bu00e1sica
+# Teste de conectividade básica
 ./executar_teste_conectividade.sh --projeto seu-projeto-id --bucket seu-bucket
 
-# Teste de conexu00e3o JDBC simplificada
+# Teste de conexão JDBC simplificada
 ./executar_teste_conexao_simples.sh --projeto seu-projeto-id --bucket seu-bucket
 ```
 
-### Executar Testes Unitu00e1rios
+### Executar Testes Unitários
 
-Para executar os testes unitu00e1rios, use o script:
+Para executar os testes unitários, use o script:
 
 ```bash
 ./executar_testes_unitarios.sh
 ```
 
-## Boas Pru00e1ticas
+## Boas Práticas
 
-1. **Mantenha os testes atualizados**: Sempre atualize os testes quando modificar o cu00f3digo.
-2. **Execute os testes regularmente**: Inclua a execuu00e7u00e3o dos testes em seu fluxo de trabalho.
-3. **Combine ambos os tipos de teste**: Testes unitu00e1rios e de integrau00e7u00e3o se complementam.
-4. **Isole os ambientes de teste**: Use ambientes isolados para evitar interferu00eancias.
-5. **Documente os resultados**: Mantenha registros dos resultados dos testes para referu00eancia futura.
+1. **Mantenha os testes atualizados**: Sempre atualize os testes quando modificar o código.
+2. **Execute os testes regularmente**: Inclua a execução dos testes em seu fluxo de trabalho.
+3. **Combine ambos os tipos de teste**: Testes unitários e de integração se complementam.
+4. **Isole os ambientes de teste**: Use ambientes isolados para evitar interferências.
+5. **Documente os resultados**: Mantenha registros dos resultados dos testes para referência futura.
 
-## Expansu00e3o dos Testes
+## Expansão dos Testes
 
 Para expandir a cobertura de testes, considere:
 
-1. Adicionar mais testes unitu00e1rios para outras funu00e7u00f5es
+1. Adicionar mais testes unitários para outras funções
 2. Implementar testes de carga para avaliar o desempenho
-3. Criar testes para cenu00e1rios de falha e recuperau00e7u00e3o
-4. Automatizar a execuu00e7u00e3o dos testes em um pipeline CI/CD
+3. Criar testes para cenários de falha e recuperação
+4. Automatizar a execução dos testes em um pipeline CI/CD
