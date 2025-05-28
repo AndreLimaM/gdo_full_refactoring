@@ -196,6 +196,53 @@ python -m tests.test_process_raw_animais
 - O arquivo `.env` é excluído do controle de versão via `.gitignore`
 - Conexões com banco de dados utilizam SSL (sslmode=prefer)
 
+## Integração Dataproc e Cloud SQL
+
+Foi implementada uma solução para processamento de dados JSON utilizando o Google Dataproc e armazenamento no Cloud SQL:
+
+### Estrutura da Solução
+
+```
+utils/dataproc/
+├── docs/                          # Documentação detalhada
+│   ├── CONEXAO_DATAPROC_CLOUDSQL.md  # Documentação sobre a conexão entre Dataproc e Cloud SQL
+│   └── PROCESSAMENTO_JSON_PARA_SQL.md # Documentação sobre o processamento de JSONs
+│
+├── scripts/                       # Scripts principais para produção
+│   ├── configurar_firewall_cloudsql.sh # Script para configurar o firewall do Cloud SQL
+│   ├── executar_listagem_tabelas_gcs.sh # Script para listar tabelas do Cloud SQL
+│   ├── executar_processamento.sh  # Script para executar o processamento de JSONs
+│   ├── init_script.sh             # Script de inicialização do cluster Dataproc
+│   ├── install_postgresql_driver.sh # Script para instalar o driver PostgreSQL
+│   ├── listar_tabelas_cloudsql.py # Script para listar tabelas do Cloud SQL
+│   └── processar_json_para_sql.py # Script PySpark para processar JSONs e gravar no SQL
+│
+├── tests/                         # Scripts de teste
+│   ├── executar_teste_conectividade.sh # Teste de conectividade entre Dataproc e Cloud SQL
+│   ├── executar_teste_conexao_simples.sh # Teste simplificado de conexão
+│   ├── executar_teste_simples.sh  # Teste básico de conexão
+│   ├── testar_conexao_dataproc_cloudsql.py # Script completo de teste de conexão
+│   ├── testar_conexao_simples.py  # Script simplificado de teste de conexão
+│   ├── teste_conectividade_basica.py # Teste básico de conectividade TCP
+│   └── teste_simples_conexao.py   # Teste simples de conexão JDBC
+│
+└── README.md                      # Documentação específica do módulo Dataproc
+```
+
+### Principais Recursos
+
+1. **Processamento de JSONs com Dataproc**: Scripts para processar arquivos JSON armazenados no GCS utilizando clusters Dataproc.
+2. **Conexão com Cloud SQL**: Implementação de conexão segura entre o Dataproc e o Cloud SQL PostgreSQL.
+3. **Configuração de Firewall**: Scripts para configurar o firewall do Cloud SQL para permitir conexões do Dataproc.
+4. **Testes de Conectividade**: Scripts para testar a conexão entre o Dataproc e o Cloud SQL.
+
+### Documentação Detalhada
+
+Para mais informações sobre a implementação, consulte:
+
+- [Conexão entre Dataproc e Cloud SQL](./utils/dataproc/docs/CONEXAO_DATAPROC_CLOUDSQL.md)
+- [Processamento de JSONs e Gravação no SQL](./utils/dataproc/docs/PROCESSAMENTO_JSON_PARA_SQL.md)
+
 ## Próximos Passos
 
 1. Implementar processamento para outros tipos de payload (caixas, desossa, etc.)
