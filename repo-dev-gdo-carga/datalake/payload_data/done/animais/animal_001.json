@@ -1,0 +1,25 @@
+{
+    "id_animal": "ANI001",
+    "data_nascimento": "2023-05-15",
+    "id_propriedade": "PROP001",
+    "sexo": "M",
+    "raca": "Nelore",
+    "peso_nascimento": 35.5,
+    "data_entrada": "2023-05-15",
+    "data_saida": null,
+    "status": "ativo",
+    "dados_adicionais": {
+        "vacinado": true,
+        "vacinas": [
+            {
+                "tipo": "Aftosa",
+                "data": "2023-06-15"
+            },
+            {
+                "tipo": "Brucelose",
+                "data": "2023-06-15"
+            }
+        ],
+        "observacoes": "Animal saudável"
+    }
+}
