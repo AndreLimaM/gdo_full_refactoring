@@ -38,8 +38,8 @@ DEFAULT_REGION = "us-east4"
 DEFAULT_ZONE = "us-east4-a"
 DEFAULT_NETWORK = "default"
 DEFAULT_SUBNETWORK = "default"
-DEFAULT_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-DEFAULT_CLUSTER_NAME = "gdo-dataproc-teste"
+DEFAULT_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "development-439017")
+DEFAULT_CLUSTER_NAME = f"gdo-dataproc-teste-{time.strftime('%Y%m%d%H%M%S')}"
 DEFAULT_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "repo-dev-gdo-carga")
 
 # Credenciais do banco de dados

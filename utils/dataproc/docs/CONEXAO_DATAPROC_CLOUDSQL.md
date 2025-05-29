@@ -1,143 +1,110 @@
-# Documentação: Conexão entre Dataproc e Cloud SQL
+# Conexão entre Dataproc e Cloud SQL
 
-## Visão Geral
+Este documento descreve como configurar e testar a conexão entre um cluster Dataproc e uma instância Cloud SQL PostgreSQL.
 
-Este documento descreve o processo de configuração e estabelecimento de conexão entre clusters Dataproc e instâncias Cloud SQL no Google Cloud Platform, implementado para o projeto de processamento de dados de animais.
+## Pré-requisitos
 
-## Desafio
+- Projeto GCP configurado (`development-439017`)
+- Instância Cloud SQL PostgreSQL criada (`gdo-cloudsql-instance`)
+- Bucket GCS para armazenamento temporário (`repo-dev-gdo-carga`)
+- Permissões adequadas para criar clusters Dataproc e acessar o Cloud SQL
 
-Um dos principais desafios enfrentados foi estabelecer uma conexão confiável entre o Dataproc (serviço de processamento de dados) e o Cloud SQL (banco de dados PostgreSQL), devido a restrições de rede e firewall.
+## Configuração
 
-## Solução Implementada
+A conexão entre o Dataproc e o Cloud SQL pode ser feita de duas maneiras:
 
-### 1. Configuração do Firewall do Cloud SQL
+1. **Conexão direta usando IP privado**: Recomendada para ambientes de produção
+2. **Conexão usando Cloud SQL Auth Proxy**: Mais segura, mas requer configuração adicional
 
-Para permitir que o Dataproc se conecte ao Cloud SQL, foi necessário configurar as regras de firewall do Cloud SQL para aceitar conexões dos IPs do cluster Dataproc.
+Nossos testes mostraram que a **conexão direta usando IP privado** é a mais confiável e eficiente para o nosso ambiente.
 
-#### Configuração para Ambiente de Testes
+### Conexão usando IP privado (Recomendada)
 
-Para fins de teste, configuramos o Cloud SQL para aceitar conexões de qualquer IP:
+Para conectar o Dataproc ao Cloud SQL usando IP privado, siga estas etapas:
 
-```bash
-gcloud sql instances patch database-ecotrace-lake \
-  --project=development-439017 \
-  --authorized-networks="0.0.0.0/0"
-```
+1. Certifique-se de que o Dataproc e o Cloud SQL estejam na mesma rede VPC
+2. Configure as regras de firewall para permitir a comunicação entre eles
+3. Use o IP privado do Cloud SQL nas configurações de conexão
 
-> **ATENÇÃO**: Esta configuração NÃO deve ser usada em ambiente de produção, pois permite conexões de qualquer IP, representando um risco de segurança.
+**Configurações para o ambiente atual:**
 
-#### Configuração Recomendada para Produção
+- IP privado do Cloud SQL: `10.98.169.3`
+- Porta: `5432`
+- Banco de dados: `db_eco_tcbf_25`
+- Usuário: `db_eco_tcbf_25_user`
+- Senha: `5HN33PHKjXcLTz3tBC`
 
-Para ambientes de produção, recomendamos as seguintes abordagens:
+### Conexão usando Cloud SQL Auth Proxy
 
-1. **Autorizar apenas IPs específicos do Dataproc**:
+Embora tenhamos tentado esta abordagem, encontramos desafios com a instalação do Cloud SQL Auth Proxy em ambientes Dataproc sem acesso à internet. Se for necessário usar esta abordagem, recomendamos:
 
-   ```bash
-   # Obter o IP do nó master do Dataproc
-   MASTER_IP=$(gcloud compute instances describe NOME_DO_NO_MASTER \
-     --zone=ZONA \
-     --project=PROJETO_ID \
-     --format="get(networkInterfaces[0].networkIP)")
-   
-   # Adicionar o IP à lista de IPs autorizados do Cloud SQL
-   gcloud sql instances patch NOME_INSTANCIA_SQL \
-     --project=PROJETO_ID \
-     --authorized-networks="${MASTER_IP}/32"
-   ```
-
-2. **Implementar VPC Peering**:
-   - Configurar VPC Peering entre a rede do Dataproc e a rede do Cloud SQL
-   - Usar o IP privado do Cloud SQL para conexão
-   - Esta é a abordagem mais segura, pois o tráfego não passa pela internet pública
-
-3. **Usar o Cloud SQL Auth Proxy**:
-   - Instalar o Cloud SQL Auth Proxy nos nós do Dataproc
-   - Usar o proxy para conexão segura com o Cloud SQL
-   - O proxy gerencia a autenticação e criptografia automaticamente
-
-### 2. Scripts de Inicialização do Dataproc
-
-Para garantir que o cluster Dataproc tenha todas as dependências necessárias para se conectar ao Cloud SQL, criamos um script de inicialização que é executado durante a criação do cluster:
-
-```bash
-#!/bin/bash
-
-# Instalar o driver JDBC do PostgreSQL
-apt-get update
-apt-get install -y postgresql-client
-
-# Baixar o driver JDBC do PostgreSQL
-wget -q https://jdbc.postgresql.org/download/postgresql-42.2.23.jar -O /usr/lib/spark/jars/postgresql-42.2.23.jar
-
-# Instalar o Cloud SQL Auth Proxy
-wget -q https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O /usr/local/bin/cloud_sql_proxy
-chmod +x /usr/local/bin/cloud_sql_proxy
-
-# Instalar bibliotecas Python necessárias
-pip install pandas psycopg2-binary google-cloud-storage
-```
-
-### 3. Configuração da Conexão JDBC
-
-Para conectar o Spark (no Dataproc) ao PostgreSQL (no Cloud SQL), utilizamos a conexão JDBC com as seguintes configurações:
-
-```python
-# Configurações de conexão com o banco de dados
-db_host = "34.48.11.43"  # IP público do Cloud SQL (para testes)
-# db_host = "10.98.169.3"  # IP privado do Cloud SQL (para produção com VPC Peering)
-db_name = "db_eco_tcbf_25"
-db_user = "db_eco_tcbf_25_user"
-db_password = "5HN33PHKjXcLTz3tBC"
-db_url = f"jdbc:postgresql://{db_host}:5432/{db_name}"
-
-# Exemplo de uso com Spark
-df = spark.read \
-    .format("jdbc") \
-    .option("driver", "org.postgresql.Driver") \
-    .option("url", db_url) \
-    .option("dbtable", "nome_da_tabela") \
-    .option("user", db_user) \
-    .option("password", db_password) \
-    .load()
-```
+1. Pré-empacotar o Cloud SQL Auth Proxy em uma imagem personalizada do Dataproc
+2. Ou garantir que o cluster Dataproc tenha acesso à internet para baixar e instalar o proxy
 
 ## Testes Realizados
 
-Foram realizados os seguintes testes para validar a conexão:
+Realizamos testes bem-sucedidos de conexão entre o Dataproc e o Cloud SQL usando o script `testar_conexao_dataproc_cloudsql.py` disponível na pasta `tests`.
 
-1. **Teste de Conectividade TCP**: Verificação da capacidade de estabelecer uma conexão TCP com o Cloud SQL.
-2. **Teste de Conexão JDBC**: Verificação da capacidade de executar consultas SQL no banco de dados.
-3. **Listagem de Tabelas**: Verificação da capacidade de listar todas as tabelas disponíveis no banco de dados.
-4. **Consulta de Dados**: Verificação da capacidade de consultar dados de tabelas específicas.
+```bash
+python3 testar_conexao_dataproc_cloudsql.py
+```
 
-Todos os testes foram bem-sucedidos após a configuração correta do firewall do Cloud SQL.
+Este script:
 
-## Problemas Comuns e Soluções
+1. Cria um cluster Dataproc temporário na região `us-east4`
+2. Instala o driver PostgreSQL JDBC no cluster
+3. Submete um job PySpark para testar a conexão com o Cloud SQL
+4. Verifica a conexão executando uma consulta simples na tabela `bt_animais`
+5. Exclui o cluster após o teste
 
-### Timeout de Conexão
+### Resultados dos Testes
 
-**Problema**: Erro "SocketTimeoutException: connect timed out" ao tentar conectar ao Cloud SQL.
+Os testes confirmaram que:
 
-**Solução**: 
-- Verificar se o IP do Dataproc está na lista de IPs autorizados do Cloud SQL.
-- Verificar se as regras de firewall da VPC permitem conexões na porta 5432 (PostgreSQL).
+1. A conexão entre o Dataproc e o Cloud SQL está funcionando corretamente
+2. O método de conexão usando o IP privado (10.98.169.3) é eficaz
+3. As credenciais do banco de dados estão corretas
+4. A configuração de rede permite a comunicação entre os serviços
+5. A tabela `bt_animais` está acessível e contém dados
 
-### Erro de Autenticação
+## Exemplo de Código para Conexão
 
-**Problema**: Erro "PSQLException: FATAL: password authentication failed for user" ao tentar conectar ao Cloud SQL.
+```python
+# Configurar propriedades de conexão com o banco de dados
+db_properties = {
+    "url": "jdbc:postgresql://10.98.169.3:5432/db_eco_tcbf_25",
+    "user": "db_eco_tcbf_25_user",
+    "password": "5HN33PHKjXcLTz3tBC"
+}
 
-**Solução**:
-- Verificar se as credenciais (usuário e senha) estão corretas.
-- Verificar se o usuário tem permissão para acessar o banco de dados especificado.
+# Ler dados de uma tabela
+df = spark.read \
+    .format("jdbc") \
+    .option("driver", "org.postgresql.Driver") \
+    .option("url", db_properties["url"]) \
+    .option("dbtable", "bt_animais") \
+    .option("user", db_properties["user"]) \
+    .option("password", db_properties["password"]) \
+    .load()
+```
 
-## Recomendações de Segurança
+## Troubleshooting
 
-1. **Nunca expor o Cloud SQL à internet pública** em ambiente de produção.
-2. **Usar VPC Peering** para conexão segura entre Dataproc e Cloud SQL.
-3. **Implementar o Cloud SQL Auth Proxy** para conexões seguras.
-4. **Armazenar credenciais de forma segura**, preferencialmente usando o Secret Manager do Google Cloud.
-5. **Limitar as permissões do usuário do banco de dados** ao mínimo necessário para a aplicação.
+Se encontrar problemas de conexão, verifique:
 
-## Conclusão
+1. Regras de firewall: Certifique-se de que a porta 5432 esteja aberta para comunicação entre o Dataproc e o Cloud SQL
+2. Configurações de rede VPC: Verifique se ambos os serviços estão na mesma rede VPC
+3. Credenciais: Confirme que as credenciais do banco de dados estão corretas
+4. Logs: Verifique os logs do Dataproc e do Cloud SQL para identificar possíveis erros
+5. Conectividade de rede: Use comandos como `ping` e `telnet` para testar a conectividade básica
 
-A conexão entre Dataproc e Cloud SQL foi estabelecida com sucesso, permitindo o processamento de dados JSON e a gravação dos resultados no banco de dados PostgreSQL. A solução implementada é robusta e pode ser adaptada para diferentes cenários de uso, desde ambientes de desenvolvimento até produção.
+## Próximos Passos
+
+Com a conexão estabelecida e testada, podemos prosseguir com a implementação do processamento de dados JSON para o Cloud SQL, utilizando a abordagem de conexão direta com IP privado.
+
+## Referências
+
+- [Documentação do Dataproc](https://cloud.google.com/dataproc)
+- [Documentação do Cloud SQL](https://cloud.google.com/sql)
+- [Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy)
+- [Conectando o Dataproc ao Cloud SQL](https://cloud.google.com/dataproc/docs/tutorials/bigquery-connector-spark-example)
